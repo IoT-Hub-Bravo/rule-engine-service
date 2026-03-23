@@ -1,0 +1,9 @@
+name: ${COMPOSE_PROJECT_NAME:-rule-engine-service}
+
+services:
+
+volumes:
+
+networks:
+  iot-hub-nw:
+    external: true
