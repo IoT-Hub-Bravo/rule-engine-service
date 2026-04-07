@@ -37,3 +37,8 @@ The Rule Engine Service owns rule definitions and evaluates incoming telemetry a
 - Java
 - Kafka
 - Docker
+
+## Starting (SHOULD CHANGE)
+```bash
+docker compose -f compose/standalone.yml --env-file .env up -d --build
+```
