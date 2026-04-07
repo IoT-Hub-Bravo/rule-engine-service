@@ -1,0 +1,35 @@
+openapi: 3.0.3
+
+info:
+  title: IoT Hub API
+  version: "1.4.1"
+  description: |
+    API for managing devices, telemetry, and rules with full CRUD support, JWT authentication,
+    pagination, schema versioning, and example payloads for testing.
+
+### CHANGE
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: health
+
+paths:
+  /health/:
+    get:
+      tags:
+        - health
+      summary: Health check
+      description: Simple health endpoint
+      operationId: getHealth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                status: ok
+### CHANGE                

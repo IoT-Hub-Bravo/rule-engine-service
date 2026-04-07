@@ -1,8 +1,22 @@
 name: ${COMPOSE_PROJECT_NAME:-rule-engine-service}
 
 services:
+  
+  rule-engine:
+    build:
+      context: .. 
+      dockerfile: docker/django/Dockerfile
+    command: /start-web-dev.sh
 
-volumes:
+    volumes:
+      - ../src:/app
+
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: True
+      SECRET_KEY: "dev-secret-key"
+
 
 networks:
   iot-hub-nw:
