@@ -30,15 +30,20 @@ INSTALLED_APPS = [
 ]
 
 # Third party apps
-
-INSTALLED_APPS += ['corsheaders']
-
-
+INSTALLED_APPS += [
+    'corsheaders',
+    'channels',
+    'django_prometheus',
+    'django_celery_beat',
+]
 # Local apps
-
-INSTALLED_APPS += ['apps.template']
+INSTALLED_APPS += [
+    'apps.rules.apps.RulesConfig',
+]
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
+    'config.middleware.logging_middleware.LoggingMiddleware',  # Logging middleware
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -47,6 +52,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -177,3 +183,114 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Redis config
+REDIS_HOST = config('REDIS_HOST', default='redis')
+REDIS_PORT = config('REDIS_PORT', default=6379)
+REDIS_PASSWORD = config('REDIS_PASSWORD', default=None)
+REDIS_DECODE_RESPONSES = config('REDIS_DECODE_RESPONSES', default = True)
+
+REDIS_CONFIG = {
+    "host": REDIS_HOST,
+    "port": REDIS_PORT,
+    "password": REDIS_PASSWORD,
+    "decode_responses": REDIS_DECODE_RESPONSES,
+}
+
+# LOGGING configuration for django and celery
+DJANGO_ROOT_LOG_LEVEL = config('DJANGO_ROOT_LOG_LEVEL', default='INFO')
+DJANGO_LOG_LEVEL = config('DJANGO_LOG_LEVEL', default='INFO')
+CELERY_LOG_LEVEL = config('CELERY_LOG_LEVEL', default='INFO')
+RULE_PROCESSOR_LOG_LEVEL = config('RULE_PROCESSOR_LOG_LEVEL', default='INFO')
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": 'pythonjsonlogger.jsonlogger.JsonFormatter',
+            "format": "{asctime} {levelname} {name} {message} {request_id} {duration}",
+            "style": "{",
+            "rename_fields": {
+                "asctime": "timestamp",
+                "levelname": "level",
+                "name": "logger_name",
+            },
+        },
+
+        "celery_json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "{asctime} {levelname} {name} {message} {task_id} {task_name}",
+            "style": "{",
+            "rename_fields": {
+                "asctime": "timestamp",
+                "levelname": "level",
+                "name": "logger_name",
+            },
+        },
+
+        "rule_processor_json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "{asctime} {levelname} {name} {message}",
+            "style": "{",
+            "rename_fields": {
+                "asctime": "timestamp",
+                "levelname": "level",
+                "name": "logger_name",
+            },
+        },
+
+    },
+
+    "filters": {
+        "request_context": {
+            "()": "config.filters.logging_filters.RequestContextFilter",
+        },
+        "celery_context": {
+            "()": "config.filters.logging_filters.CeleryContextFilter",
+        },
+    },
+
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["request_context"],
+            "formatter": "json",
+        },
+
+        "celery_console": {
+            "class": "logging.StreamHandler",
+            "filters": ["celery_context"],
+            "formatter": "celery_json",
+        },
+
+        "rule_processor_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "rule_processor_json",
+        },
+    },
+
+    "loggers": {
+        "": {
+            "handlers": ["console"],
+            "level": DJANGO_ROOT_LOG_LEVEL,
+        },
+
+        "django": {  # Django logger is declared (propagate = False by default)
+            "handlers": ["console"],
+            "level": DJANGO_LOG_LEVEL,
+            "propagate": False,
+        },
+
+        "celery": {
+            "handlers": ["celery_console"],
+            "level": CELERY_LOG_LEVEL,
+            "propagate": False,
+        },
+
+        "apps.rules.services.rule_processor": {
+            "handlers": ["rule_processor_console"],
+            "level": RULE_PROCESSOR_LOG_LEVEL,
+            "propagate": False,
+        },
+    },
+}

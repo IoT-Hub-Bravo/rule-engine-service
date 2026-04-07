@@ -1,6 +1,19 @@
 name: ${COMPOSE_PROJECT_NAME:-rule-engine-service}
 
 services:
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger-ui
+    restart: always
+    ports:
+      - "5433:8080"
+    environment:
+      SWAGGER_JSON: /docs/api.yaml
+    volumes:
+      - ./docs:/docs
+    networks:
+      - backend
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -18,6 +31,22 @@ services:
       retries: 5
     networks:
       - backend
+
+  redis:
+    image: redis:7.0-alpine3.19
+    command: redis-server --appendonly yes
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   rule-engine:
     build:
