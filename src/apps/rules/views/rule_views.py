@@ -1,3 +1,4 @@
+import httpx
 import logging
 from django.http import JsonResponse
 from django.views import View
@@ -6,20 +7,18 @@ from django.utils.decorators import method_decorator
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 
+from iot_hub_shared.audit_kit import publish_audit_event
+
 from apps.rules.serializers.rule_serializers import RuleCreateSerializer, RulePatchSerializer
 from apps.rules.services.rule_service import rule_create, rule_put, rule_patch, rule_delete
 from apps.rules.models.rule import Rule
-# from apps.rules.audit.rules_audit import rule_created, rule_updated, rule_deleted, rule_evaluated
-# from apps.devices.models.telemetry import Telemetry
-# from apps.devices.models.device import Device
-# from apps.devices.models.device_metric import DeviceMetric
-# from apps.users.decorators import jwt_required, role_required
+from apps.rules.audit.rules_audit import rule_created, rule_updated, rule_deleted, rule_evaluated
 from apps.rules.services.rule_processor import RuleProcessor
-# from apps.common.utils.views_utils import parse_json_body
-# from apps.audit.publisher import publish_audit_event
-from iot_hub_shared.audit_kit import publish_audit_event
-from iot_hub_shared.utils_kit.json import pa
 
+# from apps.users.decorators import jwt_required, role_required
+
+from apps.rules.services.device_service_client import get_user_device_metric_ids, check_device_metric_ownership
+from apps.rules.utils.json import parse_json_body
 
 logger = logging.getLogger("rules")
 
@@ -40,30 +39,25 @@ logger = logging.getLogger("rules")
 # )
 class RuleView(View):
     def get(self, request, rule_id=None):
-        """Get rule(s)"""
         user = request.user
         is_admin = user.role == "admin"
 
         if rule_id:
             try:
-                rule = (
-                    Rule.objects.get(id=rule_id)
-                    if is_admin
-                    else Rule.objects.get(id=rule_id, device_metric__device__user=user)
-                )
-                data = {
-                    "id": rule.id,
-                    "name": rule.name,
-                    "device_metric_id": rule.device_metric.id,
-                    "description": rule.description,
-                    "condition": rule.condition,
-                    "action": rule.action,
-                    "is_active": rule.is_active,
-                }
-                return JsonResponse({"rule": data})
+                rule = Rule.objects.get(id=rule_id)
             except Rule.DoesNotExist:
                 return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
+
+            # permission check
+            if not is_admin:
+                allowed_ids = get_user_device_metric_ids(user.id)
+                if rule.device_metric_id not in allowed_ids:
+                    return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
+
+            return JsonResponse({"rule": self._serialize(rule)})
+
         else:
+            # GET list
             try:
                 limit = int(request.GET.get("limit", 20))
                 offset = int(request.GET.get("offset", 0))
@@ -74,30 +68,21 @@ class RuleView(View):
 
             if limit <= 0 or offset < 0:
                 return JsonResponse(
-                    {"code": 400, "message": "Limit must be > 0 and offset must be >= 0"},
-                    status=400,
+                    {"code": 400, "message": "Limit must be > 0 and offset must be >= 0"}, status=400
                 )
 
-            all_rules = (
-                Rule.objects.all()
-                if is_admin
-                else Rule.objects.filter(device_metric__device__user=user)
-            )
+            if is_admin:
+                all_rules = Rule.objects.all()
+            else:
+                allowed_ids = get_user_device_metric_ids(user.id)
+                all_rules = Rule.objects.filter(device_metric_id__in=allowed_ids)
+
             total = all_rules.count()
-            rules = all_rules[offset : offset + limit]
-            data = [
-                {
-                    "id": r.id,
-                    "name": r.name,
-                    "device_metric_id": r.device_metric.id,
-                    "description": r.description,
-                    "condition": r.condition,
-                    "action": r.action,
-                    "is_active": r.is_active,
-                }
-                for r in rules
-            ]
-            return JsonResponse({"total": total, "limit": limit, "offset": offset, "items": data})
+            rules = all_rules[offset: offset + limit]
+            return JsonResponse({
+                "total": total, "limit": limit, "offset": offset,
+                "items": [self._serialize(r) for r in rules],
+            })
 
     def post(self, request):
         """Create a new rule"""
@@ -154,7 +139,7 @@ class RuleView(View):
         data = {
             "id": rule.id,
             "name": rule.name,
-            "device_metric_id": rule.device_metric.id,
+            "device_metric_id": rule.device_metric_id,
             "description": rule.description,
             "condition": rule.condition,
             "action": rule.action,
@@ -170,6 +155,7 @@ class RuleView(View):
 
         user = request.user
         is_admin = user.role == "admin"
+        
 
         try:
             rule_old = (
@@ -199,7 +185,7 @@ class RuleView(View):
         data = {
             "id": rule_new.id,
             "name": rule_new.name,
-            "device_metric_id": rule_new.device_metric.id,
+            "device_metric_id": rule_new.device_metric_id,
             "description": rule_new.description,
             "condition": rule_new.condition,
             "action": rule_new.action,
@@ -277,27 +263,29 @@ class RuleEvaluateView(View):
         device_metric_id = data.get("device_metric_id")
         is_admin = user.role == "admin"
 
+        ### треба змінити
         qs = (
             Telemetry.objects.all()
             if is_admin
             else Telemetry.objects.filter(device_metric__device__user=user)
         )
+        ### треба змінити
 
         if device_id is not None:
-            if not Device.objects.filter(id=device_id).exists():
+            if not Device.objects.filter(id=device_id).exists(): ### треба змінити
                 return JsonResponse({"code": 404, "message": "Device not found"}, status=404)
 
-            if not is_admin and not Device.objects.filter(id=device_id, user=user).exists():
+            if not is_admin and not Device.objects.filter(id=device_id, user=user).exists(): ### треба змінити
                 return JsonResponse({"code": 403, "message": "Access denied"}, status=403)
             qs = qs.filter(device_metric__device_id=device_id)
 
         if device_metric_id is not None:
-            if not DeviceMetric.objects.filter(id=device_metric_id).exists():
+            if not DeviceMetric.objects.filter(id=device_metric_id).exists(): ### треба змінити
                 return JsonResponse({"code": 404, "message": "DeviceMetric not found"}, status=404)
 
             if (
-                not is_admin
-                and not DeviceMetric.objects.filter(
+                not is_admin 
+                and not DeviceMetric.objects.filter( ### треба змінити
                     id=device_metric_id, device__user=user
                 ).exists()
             ):
@@ -305,13 +293,15 @@ class RuleEvaluateView(View):
             qs = qs.filter(device_metric_id=device_metric_id)
 
         if device_id is not None and device_metric_id is not None:
-            if not DeviceMetric.objects.filter(id=device_metric_id, device_id=device_id).exists():
+            if not DeviceMetric.objects.filter(id=device_metric_id, device_id=device_id).exists(): ### треба змінити
                 return JsonResponse(
                     {"code": 400, "message": "DeviceMetric does not belong to this Device"},
                     status=400,
                 )
-
+        
+        ### треба змінити
         last_telemetries = qs.order_by('device_metric', '-created_at').distinct('device_metric')
+        ### треба змінити
 
         results = []
         for telemetry in last_telemetries:
@@ -319,7 +309,7 @@ class RuleEvaluateView(View):
             results.append(
                 {
                     "telemetry_id": telemetry.id,
-                    "device_metric_id": telemetry.device_metric.id,
+                    "device_metric_id": telemetry.device_metric_id,
                     "device_name": telemetry.device_metric.device.name,
                     "result": evaluation_result,
                 }

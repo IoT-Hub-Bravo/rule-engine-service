@@ -1,7 +1,6 @@
 name: ${COMPOSE_PROJECT_NAME:-rule-engine-service}
 
 services:
-  
   rule-engine:
     env_file:
     - ../.env
