@@ -19,6 +19,7 @@ from apps.rules.services.rule_processor import RuleProcessor
 
 from apps.rules.services.device_service_client import get_user_device_metric_ids, check_device_metric_ownership
 from apps.rules.utils.json import parse_json_body
+from apps.rules.services.telemetry_service_client import get_last_telemetries
 
 logger = logging.getLogger("rules")
 
@@ -101,7 +102,7 @@ class RuleView(View):
         device_metric_id = serializer.validated_data.get("device_metric_id")
         if (
             not is_admin
-            and not DeviceMetric.objects.filter(id=device_metric_id, device__user=user).exists()
+            and not check_device_metric_ownership(device_metric_id, user.id)
         ):
             return JsonResponse(
                 {"code": 403, "message": "DeviceMetric does not belong to the user"}, status=403
@@ -158,11 +159,11 @@ class RuleView(View):
         
 
         try:
-            rule_old = (
-                Rule.objects.get(id=rule_id)
-                if is_admin
-                else Rule.objects.get(id=rule_id, device_metric__device__user=user)
-            )
+            rule_old = Rule.objects.get(id=rule_id)
+            if not is_admin:
+                allowed_ids = get_user_device_metric_ids(user.id)
+                if rule_old.device_metric_id not in allowed_ids:
+                    return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
         except Rule.DoesNotExist:
             return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
 
@@ -203,11 +204,11 @@ class RuleView(View):
         is_admin = user.role == "admin"
 
         try:
-            rule_old = (
-                Rule.objects.get(id=rule_id)
-                if is_admin
-                else Rule.objects.get(id=rule_id, device_metric__device__user=user)
-            )
+            rule_old = Rule.objects.get(id=rule_id)
+            if not is_admin:
+                allowed_ids = get_user_device_metric_ids(user.id)
+                if rule_old.device_metric_id not in allowed_ids:
+                    return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
         except Rule.DoesNotExist:
             return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
 
@@ -236,10 +237,11 @@ class RuleView(View):
         is_admin = user.role == "admin"
 
         try:
-            if is_admin:
-                rule = Rule.objects.get(id=rule_id)
-            else:
-                rule = Rule.objects.get(id=rule_id, device_metric__device__user=user)
+            rule = Rule.objects.get(id=rule_id)
+            if not is_admin:
+                allowed_ids = get_user_device_metric_ids(user.id)
+                if rule.device_metric_id not in allowed_ids:
+                    return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
         except Rule.DoesNotExist:
             return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
 
@@ -263,57 +265,24 @@ class RuleEvaluateView(View):
         device_metric_id = data.get("device_metric_id")
         is_admin = user.role == "admin"
 
-        ### треба змінити
-        qs = (
-            Telemetry.objects.all()
-            if is_admin
-            else Telemetry.objects.filter(device_metric__device__user=user)
-        )
-        ### треба змінити
-
-        if device_id is not None:
-            if not Device.objects.filter(id=device_id).exists(): ### треба змінити
-                return JsonResponse({"code": 404, "message": "Device not found"}, status=404)
-
-            if not is_admin and not Device.objects.filter(id=device_id, user=user).exists(): ### треба змінити
-                return JsonResponse({"code": 403, "message": "Access denied"}, status=403)
-            qs = qs.filter(device_metric__device_id=device_id)
-
-        if device_metric_id is not None:
-            if not DeviceMetric.objects.filter(id=device_metric_id).exists(): ### треба змінити
-                return JsonResponse({"code": 404, "message": "DeviceMetric not found"}, status=404)
-
-            if (
-                not is_admin 
-                and not DeviceMetric.objects.filter( ### треба змінити
-                    id=device_metric_id, device__user=user
-                ).exists()
-            ):
-                return JsonResponse({"code": 403, "message": "Access denied"}, status=403)
-            qs = qs.filter(device_metric_id=device_metric_id)
-
-        if device_id is not None and device_metric_id is not None:
-            if not DeviceMetric.objects.filter(id=device_metric_id, device_id=device_id).exists(): ### треба змінити
-                return JsonResponse(
-                    {"code": 400, "message": "DeviceMetric does not belong to this Device"},
-                    status=400,
-                )
-        
-        ### треба змінити
-        last_telemetries = qs.order_by('device_metric', '-created_at').distinct('device_metric')
-        ### треба змінити
+        try:
+            telemetries = get_last_telemetries(
+                user_id=user.id,
+                is_admin=is_admin,
+                device_id=device_id,
+                device_metric_id=device_metric_id,
+            )
+        except httpx.RequestError:
+            return JsonResponse({"code": 503, "message": "telemetry-service unavailable"}, status=503)
 
         results = []
-        for telemetry in last_telemetries:
+        for telemetry in telemetries:
             evaluation_result = RuleProcessor.run(telemetry)
-            results.append(
-                {
-                    "telemetry_id": telemetry.id,
-                    "device_metric_id": telemetry.device_metric_id,
-                    "device_name": telemetry.device_metric.device.name,
-                    "result": evaluation_result,
-                }
-            )
+            results.append({
+                "telemetry_id": telemetry["id"],
+                "device_metric_id": telemetry["device_metric_id"],
+                "result": evaluation_result,
+            })
             if evaluation_result["triggered"]:
                 publish_audit_event(
                     event=rule_evaluated(

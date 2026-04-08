@@ -27,7 +27,7 @@ class TelemetryEvent:
     timestamp: datetime
     device_metric_id: int
 
-
+# чому не видалив
 # def _get_value_field(telemetry: Telemetry) -> str:
 #     """Get name (type) of the value telemtry field"""
 #     if telemetry.value_numeric is not None:
@@ -58,7 +58,7 @@ class ActionTypes(str, Enum):
 ### Mapping
 ###===========
 
-
+# ЦЕ треба помііняти на апі доступ httpx
 # def map_telemetry_model_to_event(telemetry: Telemetry) -> TelemetryEvent:
 #     """
 #     Map Telemetry model instance to TelemetryEvent dataclass.
@@ -109,7 +109,7 @@ class TelemetryRepository(ABC):
         """
         raise NotImplementedError
 
-
+# ЦЕ треба помііняти на апі доступ httpx
 # class PostgresTelemetryRepository(TelemetryRepository):
 #     def _get_window(self, telemetry: TelemetryEvent, minutes: int) -> Tuple[datetime, datetime]:
 #         """Returns the start and end of the time window for the given telemetry"""
