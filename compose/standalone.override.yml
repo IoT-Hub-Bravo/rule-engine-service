@@ -1,0 +1,5 @@
+services:
+  rule-engine:
+    command: ["/start-web-dev.sh"]
+    volumes:
+      - ../src:/app

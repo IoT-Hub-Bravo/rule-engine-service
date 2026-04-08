@@ -1,16 +1,11 @@
-import requests
 import time
-from datetime import timedelta
 from celery import shared_task, current_task
 from celery.utils.log import get_task_logger
-from django.utils import timezone
-from django.db.models import Q
-from django.core.mail import send_mail
-from django.conf import settings
-from django.db import transaction
+from iot_hub_shared.audit_kit import publish_audit_event
 
 from apps.rules.services.rule_processor import RuleProcessor
-from conf.utils.logging_context import task_id_var, task_name_var
+from config.utils.logging_context import task_id_var, task_name_var
+from apps.rules.audit.rules_audit import rule_evaluated
 
 logger_celery = get_task_logger(__name__)
 

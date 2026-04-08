@@ -54,7 +54,6 @@ services:
     build:
       context: ..
       dockerfile: docker/django/Dockerfile
-    command: ["/start-web-dev.sh"]
     env_file:
       - ../.env
     ports:

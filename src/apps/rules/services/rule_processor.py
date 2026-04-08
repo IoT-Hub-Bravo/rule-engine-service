@@ -4,7 +4,6 @@ from django.core.cache import caches
 from django.conf import settings
 
 from apps.rules.models.rule import Rule
-# from apps.devices.models.telemetry import Telemetry
 # from apps.rules.services.action import Action
 from apps.rules.services.condition_evaluator import ConditionEvaluator
 from apps.rules.utils.rule_engine_utils import (
@@ -17,12 +16,13 @@ from apps.rules.utils.rule_engine_utils import (
     # PostgresTelemetryRepository,
     TelemetryRepository,
 )
-from apps.common.redis_client import get_redis_client
-from apps.common.metrics import (
+from apps.rules.utils.redis_client import get_redis_client
+from apps.rules.utils.metrics import (
     rules_evaluated_total,
     rules_triggered_total,
     rule_processing_seconds,
 )
+
 from apps.rules.services.condition_evaluator import EvaluationContext
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,8 @@ def choose_repository(duration_minutes: int) -> TelemetryRepository:
     """
     if duration_minutes > REDIS_WINDOW_MAX_MINUTES:
         logger.debug("Using PostgreSQL repository", extra={"duration_minutes": duration_minutes})
-        return PostgresTelemetryRepository()
+        return None
+        # return PostgresTelemetryRepository()
     logger.debug("Using Redis repository", extra={"duration_minutes": duration_minutes})
     return RedisTelemetryRepository(redis_client)
 
@@ -130,7 +131,7 @@ class RuleProcessor:
                     "Rule triggered - dispatching action",
                     extra={"rule_id": rule.id, "rule_type": rule_type},
                 )
-                Action.dispatch_action(rule, mapped_telemetry)
+                # Action.dispatch_action(rule, mapped_telemetry)
                 results.append({"rule_id": rule.id, "triggered": True})
             else:
                 logger.debug(

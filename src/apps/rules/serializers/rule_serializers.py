@@ -1,6 +1,6 @@
 import logging
 
-from apps.common.serializers import JSONSerializer
+from iot_hub_shared.serializer_kit import JSONSerializer
 
 logger = logging.getLogger(__name__)
 

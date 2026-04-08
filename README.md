@@ -42,3 +42,8 @@ The Rule Engine Service owns rule definitions and evaluates incoming telemetry a
 ```bash
 docker compose -f compose/standalone.yml --env-file .env up -d --build
 ```
+---
+for dev
+```bash
+docker compose -f compose/standalone.yml -f compose/standalone.override.yml --env-file .env up -d --build
+```

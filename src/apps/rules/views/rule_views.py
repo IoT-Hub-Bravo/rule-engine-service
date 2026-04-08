@@ -15,8 +15,11 @@ from apps.rules.models.rule import Rule
 # from apps.devices.models.device_metric import DeviceMetric
 # from apps.users.decorators import jwt_required, role_required
 from apps.rules.services.rule_processor import RuleProcessor
-from apps.common.utils.views_utils import parse_json_body
+# from apps.common.utils.views_utils import parse_json_body
 # from apps.audit.publisher import publish_audit_event
+from iot_hub_shared.audit_kit import publish_audit_event
+from iot_hub_shared.utils_kit.json import pa
+
 
 logger = logging.getLogger("rules")
 

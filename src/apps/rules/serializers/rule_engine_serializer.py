@@ -1,7 +1,5 @@
-from apps.common.serializers.json_serializer import JSONSerializer
-from utils.normalization import normalize_str
-from utils.normalization import parse_iso8601_utc
-
+from iot_hub_shared.utils_kit import normalize_str, parse_iso8601_utc
+from iot_hub_shared.serializer_kit import JSONSerializer
 
 class RuleEngineSerializer(JSONSerializer):
     """Serializer for validating telemetry data for the rule engine"""
