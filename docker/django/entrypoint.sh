@@ -41,6 +41,13 @@ wait_for_service \
   "PostgreSQL at ${DB_HOST}:${DB_PORT}" \
   pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER"
 
+# -----------------------------
+# Wait for Redis
+# -----------------------------
+wait_for_service \
+  "Redis at ${REDIS_HOST}:${REDIS_PORT:-6379}" \
+  redis-cli -h "$REDIS_HOST" -p "${REDIS_PORT:-6379}" ping
+
 # =============================
 # Start main process
 # =============================
