@@ -5,25 +5,24 @@ from django.conf import settings
 
 from apps.rules.models.rule import Rule
 # from apps.rules.services.action import Action
+from apps.rules.services.condition_evaluator import EvaluationContext
 from apps.rules.services.condition_evaluator import ConditionEvaluator
-from apps.rules.utils.rule_engine_utils import (
-    map_telemetry_json_to_event,
-    # map_telemetry_model_to_event,
-    DEFAULT_TELEMETRY_WINDOW_MINUTES,
-    REDIS_WINDOW_MAX_MINUTES,
-    TelemetryEvent,
-    RedisTelemetryRepository,
-    # PostgresTelemetryRepository,
-    TelemetryRepository,
-)
+from apps.rules.repositories.http import HttpTelemetryRepository
+from apps.rules.repositories.redis import RedisTelemetryRepository
+from apps.rules.repositories.base import TelemetryRepository
 from apps.rules.utils.redis_client import get_redis_client
 from apps.rules.utils.metrics import (
     rules_evaluated_total,
     rules_triggered_total,
     rule_processing_seconds,
 )
+from apps.rules.utils.rule_engine_utils import (
+    map_telemetry_json_to_event,
+    DEFAULT_TELEMETRY_WINDOW_MINUTES,
+    REDIS_WINDOW_MAX_MINUTES,
+    TelemetryEvent,
+)
 
-from apps.rules.services.condition_evaluator import EvaluationContext
 
 logger = logging.getLogger(__name__)
 redis_client = get_redis_client()
@@ -72,8 +71,7 @@ def choose_repository(duration_minutes: int) -> TelemetryRepository:
     """
     if duration_minutes > REDIS_WINDOW_MAX_MINUTES:
         logger.debug("Using PostgreSQL repository", extra={"duration_minutes": duration_minutes})
-        return None
-        # return PostgresTelemetryRepository()
+        return HttpTelemetryRepository()
     logger.debug("Using Redis repository", extra={"duration_minutes": duration_minutes})
     return RedisTelemetryRepository(redis_client)
 

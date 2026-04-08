@@ -305,19 +305,19 @@ def composite_or_rule_one_true(device_metric_temperature):
 # ============================================================================
 
 
-@pytest.fixture
-def mock_action():
-    with patch.object(Action, "dispatch_action") as mock:
-        yield mock
+# @pytest.fixture
+# def mock_action():
+#     with patch.object(Action, "dispatch_action") as mock:
+#         yield mock
 
 
 @pytest.fixture
 def mock_eval_and_dispatch():
     with (
         patch.object(ConditionEvaluator, "evaluate") as mock_eval,
-        patch.object(Action, "dispatch_action") as mock_dispatch,
+        # patch.object(Action, "dispatch_action") as mock_dispatch,
     ):
-        yield {"eval": mock_eval, "dispatch": mock_dispatch}
+        yield {"eval": mock_eval, } # "dispatch": mock_dispatch
 
 
 # ============================================================================
