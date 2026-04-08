@@ -32,7 +32,6 @@ INSTALLED_APPS = [
 # Third party apps
 INSTALLED_APPS += [
     'corsheaders',
-    'channels',
     'django_prometheus',
     'django_celery_beat',
 ]

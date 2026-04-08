@@ -13,6 +13,7 @@ FROM base AS build-stage
 RUN apt-get update && apt-get install --no-install-recommends -y \
     build-essential \
     libpq-dev \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ./requirements.txt /app/requirements.txt
@@ -27,13 +28,13 @@ FROM base AS runtime-deps-stage
 RUN apt-get update && apt-get install --no-install-recommends -y \
     libpq5 \
     postgresql-client \
+    redis-tools \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build-stage /wheels /wheels
 COPY --from=build-stage /app/requirements.txt /app/requirements.txt
 
-RUN python -m pip install --no-index --find-links=/wheels \
-    -r /app/requirements.txt \
+RUN python -m pip install --no-index /wheels/* \
     && rm -rf /wheels /app/requirements.txt
 
 
