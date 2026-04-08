@@ -69,6 +69,23 @@ def validate_action_notification_channel(notification: dict) -> None:
         raise ValidationError("Unsupported notification channel")
 
 
+def validate_webhook(webhook: Any) -> None:
+    if not isinstance(webhook, dict):
+        raise ValidationError("Webhook must be object")
+    if "url" not in webhook:
+        raise ValidationError("Webhook requires 'url'")
+    validate_action_enabled(webhook)
+
+
+def validate_notification(notification: Any) -> None:
+    if not isinstance(notification, dict):
+        raise ValidationError("Notification must be object")
+    if "channel" not in notification:
+        raise ValidationError("Notification requires 'channel'")
+    validate_action_enabled(notification)
+    validate_action_notification_channel(notification)
+
+
 def validate_action(action: dict[str, Any]) -> None:
     """
     Validate action JSON.
@@ -104,24 +121,14 @@ def validate_action(action: dict[str, Any]) -> None:
     unknown = action.keys() - allowed
     if unknown:
         raise ValidationError(
-            f"Unknown action type(s): {', '.join(unknown)}. " f"Allowed: {', '.join(allowed)}"
+            f"Unknown action type(s): {', '.join(unknown)}. Allowed: {', '.join(allowed)}"
         )
 
-    if ActionTypes.WEBHOOK.value in action:
-        webhook = action.get(ActionTypes.WEBHOOK.value)
-        if not isinstance(webhook, dict):
-            raise ValidationError("Webhook must be object")
-        if "url" not in webhook:
-            raise ValidationError("Webhook requires 'url'")
+    validators = {
+        ActionTypes.WEBHOOK: validate_webhook,
+        ActionTypes.NOTIFICATION: validate_notification,
+    }
 
-        validate_action_enabled(webhook)
-
-    if ActionTypes.NOTIFICATION.value in action:
-        notification = action.get(ActionTypes.NOTIFICATION.value)
-        if not isinstance(notification, dict):
-            raise ValidationError("Notification must be object")
-        if "channel" not in notification:
-            raise ValidationError("Notification requires 'channel'")
-
-        validate_action_enabled(notification)
-        validate_action_notification_channel(notification)
+    for action_type, validator in validators.items():
+        if action_type.value in action:
+            validator(action[action_type.value])

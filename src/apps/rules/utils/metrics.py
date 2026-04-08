@@ -17,7 +17,7 @@ from prometheus_client import Counter, Histogram
 rules_evaluated_total = Counter(
     'iot_rules_evaluated_total',
     'Total number of rules evaluated',
-    ['rule_type'],  # threshold, rate, composite
+    ['rule_type'],  # threshold, rate, composite, etc
 )
 
 rules_triggered_total = Counter(

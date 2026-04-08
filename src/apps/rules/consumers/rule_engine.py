@@ -5,9 +5,9 @@ from decouple import config
 from prometheus_client import Counter
 import django
 
-from apps.rules.serializers.rule_engine_serializer import RuleEngineSerializer
-
 from iot_hub_shared.kafka_kit import KafkaConsumer, ConsumerConfig
+
+from apps.rules.serializers.rule_engine_serializer import RuleEngineSerializer
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()

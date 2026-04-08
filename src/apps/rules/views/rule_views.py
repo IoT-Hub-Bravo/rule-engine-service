@@ -14,9 +14,6 @@ from apps.rules.services.rule_service import rule_create, rule_put, rule_patch, 
 from apps.rules.models.rule import Rule
 from apps.rules.audit.rules_audit import rule_created, rule_updated, rule_deleted, rule_evaluated
 from apps.rules.services.rule_processor import RuleProcessor
-
-# from apps.users.decorators import jwt_required, role_required
-
 from apps.rules.services.device_service_client import get_user_device_metric_ids, check_device_metric_ownership
 from apps.rules.utils.json import parse_json_body
 from apps.rules.services.telemetry_service_client import get_last_telemetries
@@ -26,18 +23,6 @@ logger = logging.getLogger("rules")
 
 @method_decorator(csrf_exempt, name='dispatch')
 # @method_decorator(jwt_required, name='dispatch')
-# @method_decorator(
-#     role_required(
-#         {
-#             "GET": ["admin", "client"],
-#             "POST": ["admin", "client"],
-#             "PUT": ["admin", "client"],
-#             "PATCH": ["admin", "client"],
-#             "DELETE": ["admin", "client"],
-#         }
-#     ),
-#     name='dispatch',
-# )
 class RuleView(View):
     def get(self, request, rule_id=None):
         user = request.user
@@ -253,7 +238,6 @@ class RuleView(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 # @method_decorator(jwt_required, name='dispatch')
-# @method_decorator(role_required({"POST": ["admin", "client"]}), name='dispatch')
 class RuleEvaluateView(View):
     def post(self, request):
         user = request.user

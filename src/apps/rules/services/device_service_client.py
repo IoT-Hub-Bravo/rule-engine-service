@@ -9,7 +9,7 @@ def get_user_device_metric_ids(user_id: int) -> list[int]:
     """Return all device_metric_ids that belongs to user"""
     try:
         response = httpx.get(
-            f"{settings.DEVICE_SERVICE_URL}", # тут треба подумати
+            f"{settings.DEVICE_METRIC_SERVICE_URL}", # тут треба подумати
             params={"user_id": user_id},
             headers={"X-Internal-Token": settings.INTERNAL_SECRET},
             timeout=3.0,

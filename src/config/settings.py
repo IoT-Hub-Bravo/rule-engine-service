@@ -293,3 +293,7 @@ LOGGING = {
         },
     },
 }
+
+### ще не знаю як назвати
+TELEMETRY_SERVICE_URL = NotImplemented
+DEVICE_METRIC_SERVICE_URL = NotImplemented

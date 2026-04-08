@@ -6,13 +6,13 @@ from django.core.cache import caches
 import uuid
 from unittest.mock import MagicMock
 
-from apps.users.models import User
-from apps.devices.models import Device, Metric, DeviceMetric, Telemetry
+# from apps.users.models import User # ЩО З ЦИМ РОБИТИ
+# from apps.devices.models import Device, Metric, DeviceMetric, Telemetry # ЩО З ЦИМ РОБИТИ
 from apps.rules.models import Rule
 from apps.rules.services.rule_processor import RuleProcessor
 from apps.rules.services.condition_evaluator import ConditionEvaluator
-from apps.rules.services.action import Action
-from apps.rules.utils.rule_engine_utils import PostgresTelemetryRepository
+# from apps.rules.services.action import Action # ЩО З ЦИМ РОБИТИ
+# from apps.rules.utils.rule_engine_utils import PostgresTelemetryRepository # ЩО З ЦИМ РОБИТИ
 from apps.rules.services.condition_evaluator import (
     BooleanEvaluator,
     StringMatchEvaluator,

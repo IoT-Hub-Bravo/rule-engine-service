@@ -1,6 +1,5 @@
 import json
 from typing import Any, Optional
-
 from django.http import JsonResponse
 
 JsonPayload = dict[str, Any] | list[Any]
