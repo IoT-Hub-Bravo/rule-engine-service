@@ -1,11 +1,12 @@
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
 from apps.rules.services.rule_service import rule_create, rule_put, rule_patch, rule_delete
 
 
 # ─────────────────────── fixtures ───────────────────────────────
+
 
 @pytest.fixture
 def valid_rule_data():
@@ -31,6 +32,7 @@ def make_rule(**kwargs):
 
 # ════════════════════════ rule_create ════════════════════════════
 
+
 class TestRuleCreate:
     def test_creates_and_returns_rule(self, valid_rule_data):
         rule = make_rule()
@@ -48,7 +50,9 @@ class TestRuleCreate:
         with (
             patch("apps.rules.services.rule_service.validate_condition"),
             patch("apps.rules.services.rule_service.validate_action"),
-            patch("apps.rules.services.rule_service.Rule.objects.create", return_value=rule) as mock_create,
+            patch(
+                "apps.rules.services.rule_service.Rule.objects.create", return_value=rule
+            ) as mock_create,
         ):
             rule_create(valid_rule_data)
 
@@ -71,7 +75,9 @@ class TestRuleCreate:
         with (
             patch("apps.rules.services.rule_service.validate_condition"),
             patch("apps.rules.services.rule_service.validate_action"),
-            patch("apps.rules.services.rule_service.Rule.objects.create", return_value=rule) as mock_create,
+            patch(
+                "apps.rules.services.rule_service.Rule.objects.create", return_value=rule
+            ) as mock_create,
         ):
             rule_create(data)
 
@@ -79,7 +85,10 @@ class TestRuleCreate:
 
     def test_validates_condition_before_create(self, valid_rule_data):
         with (
-            patch("apps.rules.services.rule_service.validate_condition", side_effect=ValidationError("bad")) as mock_val,
+            patch(
+                "apps.rules.services.rule_service.validate_condition",
+                side_effect=ValidationError("bad"),
+            ) as mock_val,
             patch("apps.rules.services.rule_service.validate_action"),
             patch("apps.rules.services.rule_service.Rule.objects.create") as mock_create,
         ):
@@ -91,7 +100,10 @@ class TestRuleCreate:
     def test_validates_action_before_create(self, valid_rule_data):
         with (
             patch("apps.rules.services.rule_service.validate_condition"),
-            patch("apps.rules.services.rule_service.validate_action", side_effect=ValidationError("bad")),
+            patch(
+                "apps.rules.services.rule_service.validate_action",
+                side_effect=ValidationError("bad"),
+            ),
             patch("apps.rules.services.rule_service.Rule.objects.create") as mock_create,
         ):
             with pytest.raises(ValidationError):
@@ -101,6 +113,7 @@ class TestRuleCreate:
 
 
 # ════════════════════════ rule_put ═══════════════════════════════
+
 
 class TestRulePut:
     def test_updates_all_fields(self, valid_rule_data):
@@ -120,7 +133,10 @@ class TestRulePut:
 
     def test_raises_if_rule_not_found(self, valid_rule_data):
         from apps.rules.models.rule import Rule
-        with patch("apps.rules.services.rule_service.Rule.objects.get", side_effect=Rule.DoesNotExist):
+
+        with patch(
+            "apps.rules.services.rule_service.Rule.objects.get", side_effect=Rule.DoesNotExist
+        ):
             with pytest.raises(Rule.DoesNotExist):
                 rule_put(rule_id=999, rule_data=valid_rule_data)
 
@@ -128,7 +144,10 @@ class TestRulePut:
         rule = make_rule()
         with (
             patch("apps.rules.services.rule_service.Rule.objects.get", return_value=rule),
-            patch("apps.rules.services.rule_service.validate_condition", side_effect=ValidationError("bad")),
+            patch(
+                "apps.rules.services.rule_service.validate_condition",
+                side_effect=ValidationError("bad"),
+            ),
             patch("apps.rules.services.rule_service.validate_action"),
         ):
             with pytest.raises(ValidationError):
@@ -141,7 +160,10 @@ class TestRulePut:
         with (
             patch("apps.rules.services.rule_service.Rule.objects.get", return_value=rule),
             patch("apps.rules.services.rule_service.validate_condition"),
-            patch("apps.rules.services.rule_service.validate_action", side_effect=ValidationError("bad")),
+            patch(
+                "apps.rules.services.rule_service.validate_action",
+                side_effect=ValidationError("bad"),
+            ),
         ):
             with pytest.raises(ValidationError):
                 rule_put(rule_id=1, rule_data=valid_rule_data)
@@ -163,6 +185,7 @@ class TestRulePut:
 
 # ════════════════════════ rule_patch ═════════════════════════════
 
+
 class TestRulePatch:
     def test_updates_only_provided_fields(self):
         rule = make_rule(name="old", is_active=False)
@@ -178,9 +201,7 @@ class TestRulePatch:
 
     def test_does_not_touch_missing_fields(self):
         rule = make_rule(device_metric_id=99)
-        with (
-            patch("apps.rules.services.rule_service.Rule.objects.get", return_value=rule),
-        ):
+        with (patch("apps.rules.services.rule_service.Rule.objects.get", return_value=rule),):
             rule_patch(rule_id=1, rule_data={"name": "updated"})
 
         assert rule.device_metric_id == 99
@@ -189,7 +210,10 @@ class TestRulePatch:
         rule = make_rule()
         with (
             patch("apps.rules.services.rule_service.Rule.objects.get", return_value=rule),
-            patch("apps.rules.services.rule_service.validate_condition", side_effect=ValidationError("bad")),
+            patch(
+                "apps.rules.services.rule_service.validate_condition",
+                side_effect=ValidationError("bad"),
+            ),
         ):
             with pytest.raises(ValidationError):
                 rule_patch(rule_id=1, rule_data={"condition": {"type": "bad"}})
@@ -210,7 +234,10 @@ class TestRulePatch:
         rule = make_rule()
         with (
             patch("apps.rules.services.rule_service.Rule.objects.get", return_value=rule),
-            patch("apps.rules.services.rule_service.validate_action", side_effect=ValidationError("bad")),
+            patch(
+                "apps.rules.services.rule_service.validate_action",
+                side_effect=ValidationError("bad"),
+            ),
         ):
             with pytest.raises(ValidationError):
                 rule_patch(rule_id=1, rule_data={"action": {"type": "bad"}})
@@ -229,7 +256,10 @@ class TestRulePatch:
 
     def test_raises_if_rule_not_found(self):
         from apps.rules.models.rule import Rule
-        with patch("apps.rules.services.rule_service.Rule.objects.get", side_effect=Rule.DoesNotExist):
+
+        with patch(
+            "apps.rules.services.rule_service.Rule.objects.get", side_effect=Rule.DoesNotExist
+        ):
             with pytest.raises(Rule.DoesNotExist):
                 rule_patch(rule_id=999, rule_data={"name": "x"})
 
@@ -242,6 +272,7 @@ class TestRulePatch:
 
 
 # ════════════════════════ rule_delete ════════════════════════════
+
 
 class TestRuleDelete:
     def test_deletes_existing_rule(self):
@@ -260,7 +291,9 @@ class TestRuleDelete:
 
     def test_logs_warning_when_not_found(self):
         with (
-            patch("apps.rules.services.rule_service.Rule.objects.get", side_effect=ObjectDoesNotExist),
+            patch(
+                "apps.rules.services.rule_service.Rule.objects.get", side_effect=ObjectDoesNotExist
+            ),
             patch("apps.rules.services.rule_service.logger") as mock_logger,
         ):
             rule_delete(rule_id=999)

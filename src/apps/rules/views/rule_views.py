@@ -14,7 +14,10 @@ from apps.rules.services.rule_service import rule_create, rule_put, rule_patch, 
 from apps.rules.models.rule import Rule
 from apps.rules.audit.rules_audit import rule_created, rule_updated, rule_deleted, rule_evaluated
 from apps.rules.services.rule_processor import RuleProcessor
-from apps.rules.services.device_service_client import get_user_device_metric_ids, check_device_metric_ownership
+from apps.rules.services.device_service_client import (
+    get_user_device_metric_ids,
+    check_device_metric_ownership,
+)
 from apps.rules.utils.json import parse_json_body
 from apps.rules.services.telemetry_service_client import get_last_telemetries
 
@@ -54,7 +57,8 @@ class RuleView(View):
 
             if limit <= 0 or offset < 0:
                 return JsonResponse(
-                    {"code": 400, "message": "Limit must be > 0 and offset must be >= 0"}, status=400
+                    {"code": 400, "message": "Limit must be > 0 and offset must be >= 0"},
+                    status=400,
                 )
 
             if is_admin:
@@ -64,11 +68,15 @@ class RuleView(View):
                 all_rules = Rule.objects.filter(device_metric_id__in=allowed_ids)
 
             total = all_rules.count()
-            rules = all_rules[offset: offset + limit]
-            return JsonResponse({
-                "total": total, "limit": limit, "offset": offset,
-                "items": [self._serialize(r) for r in rules],
-            })
+            rules = all_rules[offset : offset + limit]
+            return JsonResponse(
+                {
+                    "total": total,
+                    "limit": limit,
+                    "offset": offset,
+                    "items": [self._serialize(r) for r in rules],
+                }
+            )
 
     def post(self, request):
         """Create a new rule"""
@@ -85,10 +93,7 @@ class RuleView(View):
 
         # check if user has that device_metrics
         device_metric_id = serializer.validated_data.get("device_metric_id")
-        if (
-            not is_admin
-            and not check_device_metric_ownership(device_metric_id, user.id)
-        ):
+        if not is_admin and not check_device_metric_ownership(device_metric_id, user.id):
             return JsonResponse(
                 {"code": 403, "message": "DeviceMetric does not belong to the user"}, status=403
             )
@@ -141,7 +146,6 @@ class RuleView(View):
 
         user = request.user
         is_admin = user.role == "admin"
-        
 
         try:
             rule_old = Rule.objects.get(id=rule_id)
@@ -257,16 +261,20 @@ class RuleEvaluateView(View):
                 device_metric_id=device_metric_id,
             )
         except httpx.RequestError:
-            return JsonResponse({"code": 503, "message": "telemetry-service unavailable"}, status=503)
+            return JsonResponse(
+                {"code": 503, "message": "telemetry-service unavailable"}, status=503
+            )
 
         results = []
         for telemetry in telemetries:
             evaluation_result = RuleProcessor.run(telemetry)
-            results.append({
-                "telemetry_id": telemetry["id"],
-                "device_metric_id": telemetry["device_metric_id"],
-                "result": evaluation_result,
-            })
+            results.append(
+                {
+                    "telemetry_id": telemetry["id"],
+                    "device_metric_id": telemetry["device_metric_id"],
+                    "result": evaluation_result,
+                }
+            )
             if evaluation_result["triggered"]:
                 publish_audit_event(
                     event=rule_evaluated(

@@ -1,5 +1,15 @@
 name: ${COMPOSE_PROJECT_NAME:-rule-engine-service}
 
+x-django-base: &django_base
+  build:
+    context: ..
+    dockerfile: docker/django/Dockerfile
+  env_file:
+    - ../.env
+  restart: unless-stopped
+  networks:
+    - backend
+
 services:
   swagger-ui:
     image: swaggerapi/swagger-ui
@@ -26,7 +36,7 @@ services:
     volumes:
       - rule-engine-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}" ]
+      test: ["CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -43,37 +53,41 @@ services:
     networks:
       - backend
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 10s
 
   rule-engine:
+    <<: *django_base
     container_name: rule-engine
-    build:
-      context: ..
-      dockerfile: docker/django/Dockerfile
-    env_file:
-      - ../.env
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy  
-    restart: unless-stopped
-    networks:
-      - backend
+        condition: service_healthy
 
-  # worker:
-  #   <<: *django_base
-  #   image: iot-hub-worker
-  #   container_name: worker
-  #   command: [ "celery", "-A", "conf.celery_app", "worker", "-l", "INFO", "--concurrency=${CELERY_CONCURRENCY:-2}" ]
-  #   volumes:
-  #     - prometheus_multiproc:/tmp/prometheus_multiproc
+  worker:
+    <<: *django_base
+    container_name: worker
+    command:
+      [
+        "celery",
+        "-A",
+        "conf.celery_app",
+        "worker",
+        "-l",
+        "INFO",
+        "--concurrency=${CELERY_CONCURRENCY:-2}",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   flower:
     image: mher/flower:2.0
@@ -110,9 +124,16 @@ services:
     networks:
       - backend
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://celery_exporter:9808/metrics')" ]
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://celery_exporter:9808/metrics')",
+        ]
       interval: 3s
       timeout: 3s
       retries: 5
@@ -120,30 +141,36 @@ services:
 
   celery_beat:
     <<: *django_base
-    image: iot-hub-beat
     container_name: celery_beat
-    command: [ "celery", "-A", "conf.celery_app", "beat", "-l", "INFO", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler" ]
+    command:
+      [
+        "celery",
+        "-A",
+        "conf.celery_app",
+        "beat",
+        "-l",
+        "INFO",
+        "--scheduler",
+        "django_celery_beat.schedulers:DatabaseScheduler",
+      ]
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
 
   kafka-rule-engine:
     <<: *django_base
-    image: iot-hub-rule-engine
     container_name: kafka-rule-engine
-    command: [ "python", "-m", "consumers.rule_engine" ]
+    command: ["python", "-m", "consumers.rule_engine"]
     environment:
       KAFKA_GROUP_ID: rule-engine
-    depends_on:
-      kafka:
-        condition: service_healthy
 
 volumes:
   rule-engine-db-data:
   redis_data:
+  flower_data:
 
 networks:
   backend:
-    driver: bridge  
+    driver: bridge

@@ -2,9 +2,6 @@ import json
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
-from django.urls import reverse
-from django.utils.html import format_html
-from django.utils.timezone import localtime
 from .models import Rule
 from .validators.rule_validator import validate_action, validate_condition
 
@@ -14,9 +11,9 @@ class RuleAdminForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         if self.user and not self.user.is_superuser:
-            self.fields["device_metric_id"].queryset = self.fields["device_metric_id"].queryset.filter(
-                device__user=self.user
-            )
+            self.fields["device_metric_id"].queryset = self.fields[
+                "device_metric_id"
+            ].queryset.filter(device__user=self.user)
 
     class Meta:
         model = Rule
@@ -206,4 +203,3 @@ class RuleAdmin(admin.ModelAdmin):
     #             local.strftime("%Y-%m-%d %H:%M"),
     #         )
     #     return format_html('<span style="color: gray;">Never</span>')
-

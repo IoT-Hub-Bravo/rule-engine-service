@@ -20,7 +20,7 @@ def get_last_telemetries(
         params["user_id"] = user_id
 
     response = httpx.get(
-        f"{settings.TELEMETRY_SERVICE_URL}", #### чесно хз
+        f"{settings.TELEMETRY_SERVICE_URL}",  #### чесно хз
         params=params,
         headers={"X-Internal-Token": settings.INTERNAL_SECRET},
         timeout=5.0,

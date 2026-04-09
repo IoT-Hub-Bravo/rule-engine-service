@@ -8,9 +8,11 @@ from apps.rules.repositories.http import get_last_telemetries
 
 # ─────────────────────── fixtures ───────────────────────────────
 
+
 @pytest.fixture
 def mock_get():
     """Patches httpx.get and returns a configurable mock response"""
+
     def _make(items=None, status_code=200):
         response = MagicMock(spec=httpx.Response)
         response.json.return_value = {"items": items or []}
@@ -21,10 +23,12 @@ def mock_get():
         else:
             response.raise_for_status.return_value = None
         return response
+
     return _make
 
 
 # ──────────────────────── response handling ─────────────────────
+
 
 class TestGetLastTelemetriesResponse:
     def test_returns_items_on_success(self, mock_get):
@@ -54,6 +58,7 @@ class TestGetLastTelemetriesResponse:
 
 
 # ──────────────────────── params building ───────────────────────
+
 
 class TestGetLastTelemetriesParams:
     def _get_params(self, mock_get, **kwargs):
@@ -99,6 +104,7 @@ class TestGetLastTelemetriesParams:
 
 
 # ──────────────────────── request config ────────────────────────
+
 
 class TestGetLastTelemetriesRequest:
     def test_uses_correct_url(self, mock_get):

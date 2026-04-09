@@ -55,4 +55,3 @@ def evaluate_rule(telemetry: dict):
             "duration_seconds": round(time.perf_counter() - start_time, 4),
         },
     )
-

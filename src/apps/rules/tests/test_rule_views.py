@@ -2,12 +2,12 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock
 from django.test import RequestFactory
-from django.http import JsonResponse
 
 from apps.rules.views import RuleView, RuleEvaluateView
 
 
 # ─────────────────────── helpers / fixtures ─────────────────────
+
 
 @pytest.fixture
 def factory():
@@ -50,6 +50,7 @@ def json_request(factory, method, path, body=None, user=None, **kwargs):
 
 # ─────────────────────── GET single ─────────────────────────────
 
+
 class TestRuleViewGetSingle:
     def _get(self, factory, rule_id, user=None):
         req = factory.get(f"/rules/{rule_id}/")
@@ -58,9 +59,7 @@ class TestRuleViewGetSingle:
 
     def test_returns_rule_for_admin(self, factory):
         rule = make_rule()
-        with (
-            patch("apps.rules.views.Rule.objects.get", return_value=rule),
-        ):
+        with (patch("apps.rules.views.Rule.objects.get", return_value=rule),):
             resp = self._get(factory, rule_id=1, user=make_user(role="admin"))
 
         assert resp.status_code == 200
@@ -88,6 +87,7 @@ class TestRuleViewGetSingle:
 
     def test_returns_404_when_rule_not_found(self, factory):
         from apps.rules.models.rule import Rule
+
         with patch("apps.rules.views.Rule.objects.get", side_effect=Rule.DoesNotExist):
             resp = self._get(factory, rule_id=999)
 
@@ -95,6 +95,7 @@ class TestRuleViewGetSingle:
 
 
 # ─────────────────────── GET list ───────────────────────────────
+
 
 class TestRuleViewGetList:
     def _get_list(self, factory, user=None, query=""):
@@ -156,11 +157,10 @@ class TestRuleViewGetList:
 
 # ─────────────────────── POST ────────────────────────────────────
 
+
 class TestRuleViewPost:
     def _post(self, factory, body, user=None):
-        return RuleView.as_view()(
-            json_request(factory, "post", "/rules/", body, user)
-        )
+        return RuleView.as_view()(json_request(factory, "post", "/rules/", body, user))
 
     def test_creates_rule_for_admin(self, factory):
         rule = make_rule()
@@ -210,6 +210,7 @@ class TestRuleViewPost:
 
     def test_duplicate_name_returns_400(self, factory):
         from django.db import IntegrityError
+
         with (
             patch("apps.rules.views.RuleCreateSerializer") as MockSerializer,
             patch("apps.rules.views.check_device_metric_ownership", return_value=True),
@@ -233,6 +234,7 @@ class TestRuleViewPost:
 
 
 # ─────────────────────── PUT ─────────────────────────────────────
+
 
 class TestRuleViewPut:
     def _put(self, factory, rule_id, body, user=None):
@@ -267,6 +269,7 @@ class TestRuleViewPut:
 
     def test_rule_not_found_returns_404(self, factory):
         from apps.rules.models.rule import Rule
+
         with patch("apps.rules.views.Rule.objects.get", side_effect=Rule.DoesNotExist):
             resp = self._put(factory, 999, {})
 
@@ -274,6 +277,7 @@ class TestRuleViewPut:
 
 
 # ─────────────────────── PATCH ───────────────────────────────────
+
 
 class TestRuleViewPatch:
     def _patch(self, factory, rule_id, body, user=None):
@@ -310,6 +314,7 @@ class TestRuleViewPatch:
 
 # ─────────────────────── DELETE ──────────────────────────────────
 
+
 class TestRuleViewDelete:
     def _delete(self, factory, rule_id, user=None):
         req = factory.delete(f"/rules/{rule_id}/")
@@ -339,6 +344,7 @@ class TestRuleViewDelete:
 
     def test_not_found_returns_404(self, factory):
         from apps.rules.models.rule import Rule
+
         with patch("apps.rules.views.Rule.objects.get", side_effect=Rule.DoesNotExist):
             resp = self._delete(factory, 999)
 
@@ -357,6 +363,7 @@ class TestRuleViewDelete:
 
 
 # ════════════════════════ RuleEvaluateView ════════════════════════
+
 
 class TestRuleEvaluateView:
     def _post(self, factory, body, user=None):
@@ -383,6 +390,7 @@ class TestRuleEvaluateView:
 
     def test_telemetry_service_unavailable_returns_503(self, factory):
         import httpx
+
         with patch(
             "apps.rules.views.get_last_telemetries",
             side_effect=httpx.RequestError("down"),

@@ -40,6 +40,7 @@ class ActionTypes(str, Enum):
 ### Mapping
 ###===========
 
+
 def map_telemetry_json_to_event(telemetry: dict) -> TelemetryEvent:
     return TelemetryEvent(
         device_serial_id=telemetry.get("device_serial_id"),
@@ -47,4 +48,3 @@ def map_telemetry_json_to_event(telemetry: dict) -> TelemetryEvent:
         timestamp=datetime.fromisoformat(telemetry.get("ts")),
         device_metric_id=telemetry.get("device_metric_id"),
     )
-

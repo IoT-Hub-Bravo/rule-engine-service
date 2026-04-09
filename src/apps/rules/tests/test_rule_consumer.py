@@ -1,6 +1,6 @@
 import signal
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -8,6 +8,7 @@ from apps.rules.consumers.rule_engine import RuleEvalHandler, rule_eval_errors_t
 
 
 # ─────────────────────────── fixtures ───────────────────────────
+
 
 @pytest.fixture
 def valid_payload():
@@ -37,6 +38,7 @@ def handler(mock_rule_runner, mock_redis):
 
 
 # ─────────────────────── RuleEvalHandler ────────────────────────
+
 
 class TestRuleEvalHandlerSinglePayload:
     def test_valid_payload_calls_delay(self, handler, mock_rule_runner, valid_payload, mock_redis):
@@ -117,9 +119,7 @@ class TestRuleEvalHandlerBatch:
 
         assert mock_rule_runner.delay.call_count == 2
 
-    def test_list_with_one_invalid_skips_it(
-        self, handler, mock_rule_runner, valid_payload
-    ):
+    def test_list_with_one_invalid_skips_it(self, handler, mock_rule_runner, valid_payload):
         payloads = [valid_payload, {"bad": "data"}]
         handler.handle(payloads)
 
@@ -134,6 +134,7 @@ class TestRuleEvalHandlerBatch:
 
 # ──────────────────────────── main() ────────────────────────────
 
+
 class TestMainSignalHandlers:
     def test_sigterm_registered_to_consumer_stop(self):
         mock_consumer = MagicMock()
@@ -146,6 +147,7 @@ class TestMainSignalHandlers:
             patch("signal.signal") as mock_signal,
         ):
             from apps.rules.consumers.rule_engine import main
+
             main()
 
         calls = {c[0][0]: c[0][1] for c in mock_signal.call_args_list}
@@ -162,6 +164,7 @@ class TestMainSignalHandlers:
             patch("signal.signal"),
         ):
             from apps.rules.consumers.rule_engine import main
+
             main()
 
         mock_consumer.start.assert_called_once()

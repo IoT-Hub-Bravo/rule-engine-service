@@ -5,12 +5,16 @@ from datetime import timedelta
 from django.core.cache import caches
 import uuid
 from unittest.mock import MagicMock
+from datetime import datetime
 
 # from apps.users.models import User # ЩО З ЦИМ РОБИТИ
 # from apps.devices.models import Device, Metric, DeviceMetric, Telemetry # ЩО З ЦИМ РОБИТИ
 from apps.rules.models import Rule
 from apps.rules.services.rule_processor import RuleProcessor
 from apps.rules.services.condition_evaluator import ConditionEvaluator
+
+from apps.rules.utils.rule_engine_utils import TelemetryEvent
+
 # from apps.rules.services.action import Action # ЩО З ЦИМ РОБИТИ
 # from apps.rules.utils.rule_engine_utils import PostgresTelemetryRepository # ЩО З ЦИМ РОБИТИ
 from apps.rules.services.condition_evaluator import (
@@ -26,7 +30,6 @@ from apps.rules.services.condition_evaluator import (
 
 
 def make_context(value, telemetries_in_window=None):
-    """Build a minimal EvaluationContext with the given telemetry value."""
     telemetry = MagicMock()
     telemetry.value = value
     return EvaluationContext(
@@ -36,7 +39,6 @@ def make_context(value, telemetries_in_window=None):
 
 
 def none_context():
-    """Build an EvaluationContext where telemetry is None."""
     return EvaluationContext(telemetry=None, telemetries_in_window=[])
 
 
@@ -46,68 +48,96 @@ def none_context():
 
 
 class TelemetryFactory:
+    """
+    device_metric — тепер dict {"device_metric_id": int, ...}
+    Повертає TelemetryEvent замість Telemetry.objects.create()
+    API (сигнатури) — ті самі, що були раніше.
+    """
+
     @staticmethod
-    def create(device_metric, value, ts=None):
-        return Telemetry.objects.create(
-            device_metric=device_metric,
-            value_jsonb={"t": "numeric", "v": value},
-            ts=ts or timezone.now(),
+    def create(device_metric: dict, value, ts=None) -> TelemetryEvent:
+        return TelemetryEvent(
+            device_serial_id=f"device-{device_metric['device_metric_id']}",
+            value=value,
+            timestamp=ts or datetime.now(tz=timezone.utc),
+            device_metric_id=device_metric["device_metric_id"],
         )
 
     @staticmethod
-    def create_batch(device_metric, values, minutes_ago=1):
-        now = timezone.now()
-        created = []
-        for i, value in enumerate(values):
-            t = Telemetry.objects.create(
-                device_metric=device_metric,
-                value_jsonb={"t": "numeric", "v": value},
-                ts=now - timedelta(minutes=minutes_ago) + timedelta(seconds=i),
+    def create_batch(device_metric: dict, values: list, minutes_ago: int = 1) -> list:
+        now = datetime.now(tz=timezone.utc)
+        return [
+            TelemetryEvent(
+                device_serial_id=f"device-{device_metric['device_metric_id']}",
+                value=value,
+                timestamp=now - timedelta(minutes=minutes_ago) + timedelta(seconds=i),
+                device_metric_id=device_metric["device_metric_id"],
             )
-            created.append(t)
-        return created
+            for i, value in enumerate(values)
+        ]
 
 
 class RuleFactory:
+    """
+    device_metric — тепер dict {"device_metric_id": int, ...}
+    Rule.objects.create() залишається — Rule це єдина локальна модель.
+    API — той самий.
+    """
+
     @staticmethod
-    def create(device_metric, condition, action="notify", is_active=True, name=None):
+    def create(
+        device_metric: dict,
+        condition: dict,
+        action: str = "notify",
+        is_active: bool = True,
+        name: str = None,
+    ) -> Rule:
         if name is None:
             name = f"Rule-{uuid.uuid4()}"
         return Rule.objects.create(
             name=name,
-            device_metric=device_metric,
+            device_metric_id=device_metric["device_metric_id"],
             condition=condition,
             action=action,
             is_active=is_active,
         )
 
     @staticmethod
-    def threshold(device_metric, operator=">", value=100, **kwargs):
-        condition = ConditionFactory.threshold(operator=operator, value=value)
-        return RuleFactory.create(device_metric, condition, **kwargs)
+    def threshold(device_metric: dict, operator: str = ">", value=100, **kwargs) -> Rule:
+        return RuleFactory.create(
+            device_metric, ConditionFactory.threshold(operator=operator, value=value), **kwargs
+        )
 
     @staticmethod
-    def rate(device_metric, count=3, duration_minutes=5, **kwargs):
-        condition = ConditionFactory.rate(count=count, duration_minutes=duration_minutes)
-        return RuleFactory.create(device_metric, condition, **kwargs)
+    def rate(device_metric: dict, count: int = 3, duration_minutes: int = 5, **kwargs) -> Rule:
+        return RuleFactory.create(
+            device_metric,
+            ConditionFactory.rate(count=count, duration_minutes=duration_minutes),
+            **kwargs,
+        )
 
     @staticmethod
-    def composite(device_metric, operator="AND", conditions=None, **kwargs):
-        condition = ConditionFactory.composite(operator=operator, conditions=conditions)
-        return RuleFactory.create(device_metric, condition, **kwargs)
+    def composite(
+        device_metric: dict, operator: str = "AND", conditions: list = None, **kwargs
+    ) -> Rule:
+        return RuleFactory.create(
+            device_metric,
+            ConditionFactory.composite(operator=operator, conditions=conditions),
+            **kwargs,
+        )
 
 
 class ConditionFactory:
     @staticmethod
-    def threshold(operator=">", value=100):
+    def threshold(operator: str = ">", value=100) -> dict:
         return {"type": "threshold", "operator": operator, "value": value}
 
     @staticmethod
-    def rate(count=3, duration_minutes=5):
+    def rate(count: int = 3, duration_minutes: int = 5) -> dict:
         return {"type": "rate", "count": count, "duration_minutes": duration_minutes}
 
     @staticmethod
-    def composite(operator="AND", conditions=None):
+    def composite(operator: str = "AND", conditions: list = None) -> dict:
         return {
             "type": "composite",
             "operator": operator,
@@ -124,30 +154,23 @@ class ConditionFactory:
 # ============================================================================
 
 
-@pytest.fixture(autouse=True)
-def force_postgres_repository():
-    """Bypass Redis and always use PostgreSQL repository for rule engine."""
-    with patch(
-        "apps.rules.services.rule_processor.choose_repository",
-        return_value=PostgresTelemetryRepository(),
-    ):
-        yield
+# @pytest.fixture(autouse=True)
+# def force_postgres_repository():
+#     with patch(
+#         "apps.rules.services.rule_processor.choose_repository",
+#         return_value=PostgresTelemetryRepository(),
+#     ):
+#         yield
 
 
 @pytest.fixture(autouse=True)
 def clear_rules_cache():
-    """Override 'rules' cache with in-memory backend to avoid Redis connection."""
     from django.test.utils import override_settings
+    import django.conf
 
     with override_settings(
         CACHES={
-            **{
-                k: v
-                for k, v in __import__(
-                    'django.conf', fromlist=['settings']
-                ).settings.CACHES.items()
-                if k != 'rules'
-            },
+            **{k: v for k, v in django.conf.settings.CACHES.items() if k != "rules"},
             "rules": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
         }
     ):
@@ -156,43 +179,21 @@ def clear_rules_cache():
 
 
 # ============================================================================
-# Fixtures — Models
+# Fixtures — device_metric (раніше були User/Device/Metric/DeviceMetric)
+# Імена фікстур — ті самі, що передаються в тести.
 # ============================================================================
 
 
 @pytest.fixture
-def user():
-    return User.objects.create(username="test", email="a@b.com", password="123")
+def device_metric_temperature() -> dict:
+    """Замінює ланцюжок user → device → temperature_metric → DeviceMetric."""
+    return {"device_metric_id": 1, "device_id": 1, "metric_id": 10}
 
 
 @pytest.fixture
-def device(user):
-    return Device.objects.create(user=user, serial_id="dev1", name="Device 1")
-
-
-@pytest.fixture
-def other_device(user):
-    return Device.objects.create(user=user, serial_id="dev2", name="Device 2")
-
-
-@pytest.fixture
-def temperature_metric():
-    return Metric.objects.create(metric_type="temperature", data_type="numeric")
-
-
-@pytest.fixture
-def humidity_metric():
-    return Metric.objects.create(metric_type="humidity", data_type="numeric")
-
-
-@pytest.fixture
-def device_metric_temperature(device, temperature_metric):
-    return DeviceMetric.objects.create(device=device, metric=temperature_metric)
-
-
-@pytest.fixture
-def device_metric_humidity(other_device, humidity_metric):
-    return DeviceMetric.objects.create(device=other_device, metric=humidity_metric)
+def device_metric_humidity() -> dict:
+    """Замінює ланцюжок user → other_device → humidity_metric → DeviceMetric."""
+    return {"device_metric_id": 2, "device_id": 2, "metric_id": 20}
 
 
 # ============================================================================
@@ -251,13 +252,12 @@ def humidity_threshold_rule(device_metric_humidity):
 
 
 # ============================================================================
-# Fixtures — Rate Rule Scenarios (rule + latest telemetry)
+# Fixtures — Rate Rule Scenarios
 # ============================================================================
 
 
 @pytest.fixture
 def rate_rule_count_met(device_metric_temperature):
-    """3 telemetries + rate rule requiring count=3 → condition TRUE."""
     telemetries = TelemetryFactory.create_batch(device_metric_temperature, [100, 105, 110])
     rule = RuleFactory.rate(device_metric_temperature, count=3, duration_minutes=5)
     return rule, telemetries[-1]
@@ -265,20 +265,18 @@ def rate_rule_count_met(device_metric_temperature):
 
 @pytest.fixture
 def rate_rule_count_not_met(device_metric_temperature):
-    """2 telemetries + rate rule requiring count=3 → condition FALSE."""
     telemetries = TelemetryFactory.create_batch(device_metric_temperature, [100, 105])
     rule = RuleFactory.rate(device_metric_temperature, count=3, duration_minutes=5)
     return rule, telemetries[-1]
 
 
 # ============================================================================
-# Fixtures — Composite Rule Scenarios (rule + latest telemetry)
+# Fixtures — Composite Rule Scenarios
 # ============================================================================
 
 
 @pytest.fixture
 def composite_and_rule_all_true(device_metric_temperature):
-    """AND composite: threshold > 90 AND rate count=3 — both TRUE."""
     telemetries = TelemetryFactory.create_batch(device_metric_temperature, [100, 95, 99])
     rule = RuleFactory.composite(device_metric_temperature, operator="AND")
     return rule, telemetries[-1]
@@ -286,7 +284,6 @@ def composite_and_rule_all_true(device_metric_temperature):
 
 @pytest.fixture
 def composite_and_rule_threshold_false(device_metric_temperature):
-    """AND composite: threshold > 90 is FALSE (low values), rate count=3 is TRUE."""
     telemetries = TelemetryFactory.create_batch(device_metric_temperature, [20, 10, 9])
     rule = RuleFactory.composite(device_metric_temperature, operator="AND")
     return rule, telemetries[-1]
@@ -294,7 +291,6 @@ def composite_and_rule_threshold_false(device_metric_temperature):
 
 @pytest.fixture
 def composite_or_rule_one_true(device_metric_temperature):
-    """OR composite: threshold > 90 TRUE, rate count=3 FALSE (only 2 entries)."""
     telemetries = TelemetryFactory.create_batch(device_metric_temperature, [100, 95])
     rule = RuleFactory.composite(device_metric_temperature, operator="OR")
     return rule, telemetries[-1]
@@ -317,7 +313,9 @@ def mock_eval_and_dispatch():
         patch.object(ConditionEvaluator, "evaluate") as mock_eval,
         # patch.object(Action, "dispatch_action") as mock_dispatch,
     ):
-        yield {"eval": mock_eval, } # "dispatch": mock_dispatch
+        yield {
+            "eval": mock_eval,
+        }  # "dispatch": mock_dispatch
 
 
 # ============================================================================

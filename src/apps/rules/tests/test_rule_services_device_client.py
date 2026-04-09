@@ -11,6 +11,7 @@ from apps.rules.repositories.http import (
 
 # ─────────────────────── fixtures ───────────────────────────────
 
+
 @pytest.fixture
 def mock_response():
     def _make(ids: list[int] = None, status_code: int = 200):
@@ -24,10 +25,12 @@ def mock_response():
         else:
             response.raise_for_status.return_value = None
         return response
+
     return _make
 
 
 # ──────────────── get_user_device_metric_ids ────────────────────
+
 
 class TestGetUserDeviceMetricIds:
     def test_returns_ids_on_success(self, mock_response):
@@ -92,6 +95,7 @@ class TestGetUserDeviceMetricIds:
 
 
 # ──────────────── check_device_metric_ownership ─────────────────
+
 
 class TestCheckDeviceMetricOwnership:
     def test_returns_true_when_id_in_list(self, mock_response):

@@ -23,6 +23,3 @@ class TelemetryRepository(ABC):
         :return: Collection of telemetry records or values.
         """
         raise NotImplementedError
-
-
-

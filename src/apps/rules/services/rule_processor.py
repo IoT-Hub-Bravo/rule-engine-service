@@ -4,6 +4,7 @@ from django.core.cache import caches
 from django.conf import settings
 
 from apps.rules.models.rule import Rule
+
 # from apps.rules.services.action import Action
 from apps.rules.services.condition_evaluator import EvaluationContext
 from apps.rules.services.condition_evaluator import ConditionEvaluator
