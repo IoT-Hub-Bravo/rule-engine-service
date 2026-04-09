@@ -1,27 +1,56 @@
 name: ${COMPOSE_PROJECT_NAME:-rule-engine-service}
 
+x-django-base: &django_base
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+  env_file:
+    - ../.env
+  restart: unless-stopped
+  networks:
+    - iot-hub-nw
+
 services:
   rule-engine:
-    env_file:
-    - ../.env
-    build:
-      context: .. 
-      dockerfile: docker/django/Dockerfile
-    command: /start-web-dev.sh
-
-    volumes:
-      - ../src:/app
-
+    <<: *django_base
+    container_name: rule-engine
     ports:
-      - "8000:8000"
+      - "3100:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  worker:
+    <<: *django_base
+    container_name: worker
+    command:
+      [
+        "celery",
+        "-A",
+        "config.celery_app",
+        "worker",
+        "-l",
+        "INFO",
+        "--concurrency=${CELERY_CONCURRENCY:-2}",
+      ]
+
+
+  kafka-rule-engine:
+    <<: *django_base
+    container_name: kafka-rule-engine
+    command: ["python", "-m", "apps.rules.consumers.rule_engine"]
     environment:
-      DEBUG: True
-      SECRET_KEY: "dev-secret-key"
+      KAFKA_GROUP_ID: rule-engine
 
-    networks:
-      - iot-hub-nw  
-
-## add consumer
 
 networks:
   iot-hub-nw:
