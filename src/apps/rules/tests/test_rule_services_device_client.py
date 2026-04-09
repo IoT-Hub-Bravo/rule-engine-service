@@ -1,15 +1,27 @@
 import pytest
 import httpx
 from unittest.mock import patch, MagicMock
-from django.conf import settings
+from django.test import override_settings
 
 from apps.rules.services.device_service_client import (
     get_user_device_metric_ids,
     check_device_metric_ownership,
 )
 
-
 # ─────────────────────── fixtures ───────────────────────────────
+
+FAKE_SECRET = "test-secret-token"
+FAKE_SERVICE_URL = "http://device-service/api/metrics"
+
+
+@pytest.fixture(autouse=True)
+def patch_settings():
+    """INTERNAL_SECRET та DEVICE_METRIC_SERVICE_URL можуть бути відсутні в тестовому settings."""
+    with override_settings(
+        INTERNAL_SECRET=FAKE_SECRET,
+        DEVICE_METRIC_SERVICE_URL=FAKE_SERVICE_URL,
+    ):
+        yield
 
 
 @pytest.fixture
@@ -41,7 +53,7 @@ class TestGetUserDeviceMetricIds:
 
     def test_returns_empty_list_when_key_missing(self, mock_response):
         resp = mock_response()
-        resp.json.return_value = {}  # no "device_metric_ids" key
+        resp.json.return_value = {}
         with patch("httpx.get", return_value=resp):
             result = get_user_device_metric_ids(user_id=7)
 
@@ -59,14 +71,15 @@ class TestGetUserDeviceMetricIds:
             get_user_device_metric_ids(user_id=7)
 
         _, kwargs = mock_get.call_args
-        assert kwargs["headers"]["X-Internal-Token"] == settings.INTERNAL_SECRET
+        # перевіряємо значення яке реально передається, а не settings напряму
+        assert kwargs["headers"]["X-Internal-Token"] == FAKE_SECRET
 
     def test_uses_correct_url(self, mock_response):
         with patch("httpx.get", return_value=mock_response()) as mock_get:
             get_user_device_metric_ids(user_id=7)
 
         url = mock_get.call_args[0][0]
-        assert url == settings.DEVICE_METRIC_SERVICE_URL
+        assert url == FAKE_SERVICE_URL
 
     def test_raises_on_request_error(self):
         with patch("httpx.get", side_effect=httpx.RequestError("timeout")):
@@ -75,7 +88,7 @@ class TestGetUserDeviceMetricIds:
 
     def test_logs_on_request_error(self):
         with patch("httpx.get", side_effect=httpx.RequestError("timeout")):
-            with patch("apps.rules.repositories.http.logger") as mock_logger:
+            with patch("apps.rules.services.device_service_client.logger") as mock_logger:
                 with pytest.raises(httpx.RequestError):
                     get_user_device_metric_ids(user_id=7)
 

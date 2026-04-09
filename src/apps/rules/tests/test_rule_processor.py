@@ -1,11 +1,10 @@
 import pytest
 from unittest.mock import patch, ANY
-from django.utils import timezone
 from datetime import timedelta
 from django.core.cache import caches
 import uuid
 from unittest.mock import MagicMock
-from datetime import datetime
+from datetime import datetime, timezone
 
 # from apps.users.models import User # ЩО З ЦИМ РОБИТИ
 # from apps.devices.models import Device, Metric, DeviceMetric, Telemetry # ЩО З ЦИМ РОБИТИ

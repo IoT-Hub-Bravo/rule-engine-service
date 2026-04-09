@@ -1,18 +1,29 @@
 import pytest
 import httpx
 from unittest.mock import patch, MagicMock
-from django.conf import settings
+from django.test import override_settings
 
 from apps.rules.services.telemetry_service_client import get_last_telemetries
+
+
+FAKE_SECRET = "test-secret-token"
+FAKE_TELEMETRY_URL = "http://telemetry-service/api/telemetries"
 
 
 # ─────────────────────── fixtures ───────────────────────────────
 
 
+@pytest.fixture(autouse=True)
+def patch_settings():
+    with override_settings(
+        INTERNAL_SECRET=FAKE_SECRET,
+        TELEMETRY_SERVICE_URL=FAKE_TELEMETRY_URL,
+    ):
+        yield
+
+
 @pytest.fixture
 def mock_get():
-    """Patches httpx.get and returns a configurable mock response"""
-
     def _make(items=None, status_code=200):
         response = MagicMock(spec=httpx.Response)
         response.json.return_value = {"items": items or []}
@@ -111,13 +122,13 @@ class TestGetLastTelemetriesRequest:
         with patch("httpx.get", return_value=mock_get()) as m:
             get_last_telemetries(user_id=1, is_admin=False)
 
-        assert m.call_args[0][0] == settings.TELEMETRY_SERVICE_URL
+        assert m.call_args[0][0] == FAKE_TELEMETRY_URL
 
     def test_sends_auth_header(self, mock_get):
         with patch("httpx.get", return_value=mock_get()) as m:
             get_last_telemetries(user_id=1, is_admin=False)
 
-        assert m.call_args[1]["headers"]["X-Internal-Token"] == settings.INTERNAL_SECRET
+        assert m.call_args[1]["headers"]["X-Internal-Token"] == FAKE_SECRET
 
     def test_timeout_value(self, mock_get):
         with patch("httpx.get", return_value=mock_get()) as m:

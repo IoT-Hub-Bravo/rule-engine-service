@@ -28,6 +28,18 @@ logger = logging.getLogger("rules")
 @method_decorator(csrf_exempt, name='dispatch')
 @method_decorator(login_required, name="dispatch")
 class RuleView(View):
+    @staticmethod
+    def _serialize(rule) -> dict:
+        return {
+            "id": rule.id,
+            "name": rule.name,
+            "device_metric_id": rule.device_metric_id,
+            "description": getattr(rule, "description", None),
+            "condition": rule.condition,
+            "action": rule.action,
+            "is_active": rule.is_active,
+        }
+
     def get(self, request, rule_id=None):
         user = request.user
         is_admin = user.role == "admin"

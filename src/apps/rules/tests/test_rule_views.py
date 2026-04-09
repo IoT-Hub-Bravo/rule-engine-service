@@ -3,8 +3,9 @@ import pytest
 from unittest.mock import patch, MagicMock
 from django.test import RequestFactory
 
-from apps.rules.views import RuleView, RuleEvaluateView
+from apps.rules.views.rule_views import RuleView, RuleEvaluateView
 
+VIEW = "apps.rules.views.rule_views"
 
 # ─────────────────────── helpers / fixtures ─────────────────────
 
@@ -59,7 +60,7 @@ class TestRuleViewGetSingle:
 
     def test_returns_rule_for_admin(self, factory):
         rule = make_rule()
-        with (patch("apps.rules.views.Rule.objects.get", return_value=rule),):
+        with patch(f"{VIEW}.Rule.objects.get", return_value=rule):
             resp = self._get(factory, rule_id=1, user=make_user(role="admin"))
 
         assert resp.status_code == 200
@@ -68,8 +69,8 @@ class TestRuleViewGetSingle:
     def test_returns_rule_for_owner(self, factory):
         rule = make_rule(device_metric_id=10)
         with (
-            patch("apps.rules.views.Rule.objects.get", return_value=rule),
-            patch("apps.rules.views.get_user_device_metric_ids", return_value=[10, 20]),
+            patch(f"{VIEW}.Rule.objects.get", return_value=rule),
+            patch(f"{VIEW}.get_user_device_metric_ids", return_value=[10, 20]),
         ):
             resp = self._get(factory, rule_id=1)
 
@@ -78,8 +79,8 @@ class TestRuleViewGetSingle:
     def test_returns_404_when_not_owner(self, factory):
         rule = make_rule(device_metric_id=99)
         with (
-            patch("apps.rules.views.Rule.objects.get", return_value=rule),
-            patch("apps.rules.views.get_user_device_metric_ids", return_value=[10]),
+            patch(f"{VIEW}.Rule.objects.get", return_value=rule),
+            patch(f"{VIEW}.get_user_device_metric_ids", return_value=[10]),
         ):
             resp = self._get(factory, rule_id=1)
 
@@ -88,7 +89,7 @@ class TestRuleViewGetSingle:
     def test_returns_404_when_rule_not_found(self, factory):
         from apps.rules.models.rule import Rule
 
-        with patch("apps.rules.views.Rule.objects.get", side_effect=Rule.DoesNotExist):
+        with patch(f"{VIEW}.Rule.objects.get", side_effect=Rule.DoesNotExist):
             resp = self._get(factory, rule_id=999)
 
         assert resp.status_code == 404
@@ -108,7 +109,7 @@ class TestRuleViewGetList:
         qs = MagicMock()
         qs.count.return_value = 3
         qs.__getitem__ = lambda self, s: rules[s]
-        with patch("apps.rules.views.Rule.objects.all", return_value=qs):
+        with patch(f"{VIEW}.Rule.objects.all", return_value=qs):
             resp = self._get_list(factory, user=make_user(role="admin"))
 
         assert resp.status_code == 200
@@ -120,8 +121,8 @@ class TestRuleViewGetList:
         qs.count.return_value = 1
         qs.__getitem__ = lambda self, s: rules[s]
         with (
-            patch("apps.rules.views.get_user_device_metric_ids", return_value=[10]),
-            patch("apps.rules.views.Rule.objects.filter", return_value=qs),
+            patch(f"{VIEW}.get_user_device_metric_ids", return_value=[10]),
+            patch(f"{VIEW}.Rule.objects.filter", return_value=qs),
         ):
             resp = self._get_list(factory)
 
@@ -147,7 +148,7 @@ class TestRuleViewGetList:
         qs = MagicMock()
         qs.count.return_value = 0
         qs.__getitem__ = lambda self, s: []
-        with patch("apps.rules.views.Rule.objects.all", return_value=qs):
+        with patch(f"{VIEW}.Rule.objects.all", return_value=qs):
             resp = self._get_list(factory, user=make_user(role="admin"))
 
         body = json.loads(resp.content)
@@ -165,9 +166,9 @@ class TestRuleViewPost:
     def test_creates_rule_for_admin(self, factory):
         rule = make_rule()
         with (
-            patch("apps.rules.views.RuleCreateSerializer") as MockSerializer,
-            patch("apps.rules.views.rule_create", return_value=rule),
-            patch("apps.rules.views.publish_audit_event"),
+            patch(f"{VIEW}.RuleCreateSerializer") as MockSerializer,
+            patch(f"{VIEW}.rule_create", return_value=rule),
+            patch(f"{VIEW}.publish_audit_event"),
         ):
             MockSerializer.return_value.is_valid.return_value = True
             MockSerializer.return_value.validated_data = {"device_metric_id": 10}
@@ -177,8 +178,8 @@ class TestRuleViewPost:
 
     def test_non_admin_without_ownership_returns_403(self, factory):
         with (
-            patch("apps.rules.views.RuleCreateSerializer") as MockSerializer,
-            patch("apps.rules.views.check_device_metric_ownership", return_value=False),
+            patch(f"{VIEW}.RuleCreateSerializer") as MockSerializer,
+            patch(f"{VIEW}.check_device_metric_ownership", return_value=False),
         ):
             MockSerializer.return_value.is_valid.return_value = True
             MockSerializer.return_value.validated_data = {"device_metric_id": 10}
@@ -189,10 +190,10 @@ class TestRuleViewPost:
     def test_non_admin_with_ownership_creates_rule(self, factory):
         rule = make_rule()
         with (
-            patch("apps.rules.views.RuleCreateSerializer") as MockSerializer,
-            patch("apps.rules.views.check_device_metric_ownership", return_value=True),
-            patch("apps.rules.views.rule_create", return_value=rule),
-            patch("apps.rules.views.publish_audit_event"),
+            patch(f"{VIEW}.RuleCreateSerializer") as MockSerializer,
+            patch(f"{VIEW}.check_device_metric_ownership", return_value=True),
+            patch(f"{VIEW}.rule_create", return_value=rule),
+            patch(f"{VIEW}.publish_audit_event"),
         ):
             MockSerializer.return_value.is_valid.return_value = True
             MockSerializer.return_value.validated_data = {"device_metric_id": 10}
@@ -201,7 +202,7 @@ class TestRuleViewPost:
         assert resp.status_code == 201
 
     def test_invalid_serializer_returns_400(self, factory):
-        with patch("apps.rules.views.RuleCreateSerializer") as MockSerializer:
+        with patch(f"{VIEW}.RuleCreateSerializer") as MockSerializer:
             MockSerializer.return_value.is_valid.return_value = False
             MockSerializer.return_value.errors = {"name": ["required"]}
             resp = self._post(factory, {})
@@ -212,10 +213,10 @@ class TestRuleViewPost:
         from django.db import IntegrityError
 
         with (
-            patch("apps.rules.views.RuleCreateSerializer") as MockSerializer,
-            patch("apps.rules.views.check_device_metric_ownership", return_value=True),
+            patch(f"{VIEW}.RuleCreateSerializer") as MockSerializer,
+            patch(f"{VIEW}.check_device_metric_ownership", return_value=True),
             patch(
-                "apps.rules.views.rule_create",
+                f"{VIEW}.rule_create",
                 side_effect=IntegrityError("unique_rule_name_per_device_metric"),
             ),
         ):
@@ -246,10 +247,10 @@ class TestRuleViewPut:
     def test_full_update_returns_200(self, factory):
         rule = make_rule()
         with (
-            patch("apps.rules.views.Rule.objects.get", return_value=rule),
-            patch("apps.rules.views.RuleCreateSerializer") as MockSerializer,
-            patch("apps.rules.views.rule_put", return_value=rule),
-            patch("apps.rules.views.publish_audit_event"),
+            patch(f"{VIEW}.Rule.objects.get", return_value=rule),
+            patch(f"{VIEW}.RuleCreateSerializer") as MockSerializer,
+            patch(f"{VIEW}.rule_put", return_value=rule),
+            patch(f"{VIEW}.publish_audit_event"),
         ):
             MockSerializer.return_value.is_valid.return_value = True
             MockSerializer.return_value.validated_data = {}
@@ -260,8 +261,8 @@ class TestRuleViewPut:
     def test_non_owner_gets_404(self, factory):
         rule = make_rule(device_metric_id=99)
         with (
-            patch("apps.rules.views.Rule.objects.get", return_value=rule),
-            patch("apps.rules.views.get_user_device_metric_ids", return_value=[10]),
+            patch(f"{VIEW}.Rule.objects.get", return_value=rule),
+            patch(f"{VIEW}.get_user_device_metric_ids", return_value=[10]),
         ):
             resp = self._put(factory, 1, {})
 
@@ -270,7 +271,7 @@ class TestRuleViewPut:
     def test_rule_not_found_returns_404(self, factory):
         from apps.rules.models.rule import Rule
 
-        with patch("apps.rules.views.Rule.objects.get", side_effect=Rule.DoesNotExist):
+        with patch(f"{VIEW}.Rule.objects.get", side_effect=Rule.DoesNotExist):
             resp = self._put(factory, 999, {})
 
         assert resp.status_code == 404
@@ -289,10 +290,10 @@ class TestRuleViewPatch:
     def test_partial_update_returns_200(self, factory):
         rule = make_rule()
         with (
-            patch("apps.rules.views.Rule.objects.get", return_value=rule),
-            patch("apps.rules.views.RulePatchSerializer") as MockSerializer,
-            patch("apps.rules.views.rule_patch", return_value=rule),
-            patch("apps.rules.views.publish_audit_event"),
+            patch(f"{VIEW}.Rule.objects.get", return_value=rule),
+            patch(f"{VIEW}.RulePatchSerializer") as MockSerializer,
+            patch(f"{VIEW}.rule_patch", return_value=rule),
+            patch(f"{VIEW}.publish_audit_event"),
         ):
             MockSerializer.return_value.is_valid.return_value = True
             MockSerializer.return_value.validated_data = {}
@@ -304,8 +305,8 @@ class TestRuleViewPatch:
     def test_non_owner_gets_404(self, factory):
         rule = make_rule(device_metric_id=99)
         with (
-            patch("apps.rules.views.Rule.objects.get", return_value=rule),
-            patch("apps.rules.views.get_user_device_metric_ids", return_value=[10]),
+            patch(f"{VIEW}.Rule.objects.get", return_value=rule),
+            patch(f"{VIEW}.get_user_device_metric_ids", return_value=[10]),
         ):
             resp = self._patch(factory, 1, {})
 
@@ -324,9 +325,9 @@ class TestRuleViewDelete:
     def test_admin_deletes_rule_returns_204(self, factory):
         rule = make_rule()
         with (
-            patch("apps.rules.views.Rule.objects.get", return_value=rule),
-            patch("apps.rules.views.rule_delete"),
-            patch("apps.rules.views.publish_audit_event"),
+            patch(f"{VIEW}.Rule.objects.get", return_value=rule),
+            patch(f"{VIEW}.rule_delete"),
+            patch(f"{VIEW}.publish_audit_event"),
         ):
             resp = self._delete(factory, 1, user=make_user(role="admin"))
 
@@ -335,8 +336,8 @@ class TestRuleViewDelete:
     def test_non_owner_gets_404(self, factory):
         rule = make_rule(device_metric_id=99)
         with (
-            patch("apps.rules.views.Rule.objects.get", return_value=rule),
-            patch("apps.rules.views.get_user_device_metric_ids", return_value=[10]),
+            patch(f"{VIEW}.Rule.objects.get", return_value=rule),
+            patch(f"{VIEW}.get_user_device_metric_ids", return_value=[10]),
         ):
             resp = self._delete(factory, 1)
 
@@ -345,7 +346,7 @@ class TestRuleViewDelete:
     def test_not_found_returns_404(self, factory):
         from apps.rules.models.rule import Rule
 
-        with patch("apps.rules.views.Rule.objects.get", side_effect=Rule.DoesNotExist):
+        with patch(f"{VIEW}.Rule.objects.get", side_effect=Rule.DoesNotExist):
             resp = self._delete(factory, 999)
 
         assert resp.status_code == 404
@@ -353,9 +354,9 @@ class TestRuleViewDelete:
     def test_rule_delete_called(self, factory):
         rule = make_rule()
         with (
-            patch("apps.rules.views.Rule.objects.get", return_value=rule),
-            patch("apps.rules.views.rule_delete") as mock_delete,
-            patch("apps.rules.views.publish_audit_event"),
+            patch(f"{VIEW}.Rule.objects.get", return_value=rule),
+            patch(f"{VIEW}.rule_delete") as mock_delete,
+            patch(f"{VIEW}.publish_audit_event"),
         ):
             self._delete(factory, 1, user=make_user(role="admin"))
 
@@ -378,9 +379,9 @@ class TestRuleEvaluateView:
         ]
         eval_result = {"triggered": False, "rule_id": None, "telemetry": {}}
         with (
-            patch("apps.rules.views.get_last_telemetries", return_value=telemetries),
-            patch("apps.rules.views.RuleProcessor.run", return_value=eval_result),
-            patch("apps.rules.views.publish_audit_event"),
+            patch(f"{VIEW}.get_last_telemetries", return_value=telemetries),
+            patch(f"{VIEW}.RuleProcessor.run", return_value=eval_result),
+            patch(f"{VIEW}.publish_audit_event"),
         ):
             resp = self._post(factory, {})
 
@@ -391,10 +392,7 @@ class TestRuleEvaluateView:
     def test_telemetry_service_unavailable_returns_503(self, factory):
         import httpx
 
-        with patch(
-            "apps.rules.views.get_last_telemetries",
-            side_effect=httpx.RequestError("down"),
-        ):
+        with patch(f"{VIEW}.get_last_telemetries", side_effect=httpx.RequestError("down")):
             resp = self._post(factory, {})
 
         assert resp.status_code == 503
@@ -403,9 +401,9 @@ class TestRuleEvaluateView:
         telemetries = [{"id": 1, "device_metric_id": 10, "value": 42}]
         eval_result = {"triggered": True, "rule_id": 5, "telemetry": {"value": 42}}
         with (
-            patch("apps.rules.views.get_last_telemetries", return_value=telemetries),
-            patch("apps.rules.views.RuleProcessor.run", return_value=eval_result),
-            patch("apps.rules.views.publish_audit_event") as mock_audit,
+            patch(f"{VIEW}.get_last_telemetries", return_value=telemetries),
+            patch(f"{VIEW}.RuleProcessor.run", return_value=eval_result),
+            patch(f"{VIEW}.publish_audit_event") as mock_audit,
         ):
             self._post(factory, {})
 
@@ -415,9 +413,9 @@ class TestRuleEvaluateView:
         telemetries = [{"id": 1, "device_metric_id": 10, "value": 42}]
         eval_result = {"triggered": False, "rule_id": None, "telemetry": {}}
         with (
-            patch("apps.rules.views.get_last_telemetries", return_value=telemetries),
-            patch("apps.rules.views.RuleProcessor.run", return_value=eval_result),
-            patch("apps.rules.views.publish_audit_event") as mock_audit,
+            patch(f"{VIEW}.get_last_telemetries", return_value=telemetries),
+            patch(f"{VIEW}.RuleProcessor.run", return_value=eval_result),
+            patch(f"{VIEW}.publish_audit_event") as mock_audit,
         ):
             self._post(factory, {})
 
@@ -425,8 +423,8 @@ class TestRuleEvaluateView:
 
     def test_empty_telemetries_returns_empty_results(self, factory):
         with (
-            patch("apps.rules.views.get_last_telemetries", return_value=[]),
-            patch("apps.rules.views.publish_audit_event"),
+            patch(f"{VIEW}.get_last_telemetries", return_value=[]),
+            patch(f"{VIEW}.publish_audit_event"),
         ):
             resp = self._post(factory, {})
 
@@ -434,8 +432,8 @@ class TestRuleEvaluateView:
 
     def test_passes_filters_to_telemetry_service(self, factory):
         with (
-            patch("apps.rules.views.get_last_telemetries", return_value=[]) as mock_get,
-            patch("apps.rules.views.publish_audit_event"),
+            patch(f"{VIEW}.get_last_telemetries", return_value=[]) as mock_get,
+            patch(f"{VIEW}.publish_audit_event"),
         ):
             self._post(factory, {"device_id": 7, "device_metric_id": 3})
 

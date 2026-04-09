@@ -85,10 +85,10 @@ class TestRuleCreate:
 
     def test_validates_condition_before_create(self, valid_rule_data):
         with (
-            # patch(
-            #     "apps.rules.services.rule_service.validate_condition",
-            #     side_effect=ValidationError("bad"),
-            # ) as mock_val,
+            patch(
+                "apps.rules.services.rule_service.validate_condition",
+                side_effect=ValidationError("bad"),
+            ),
             patch("apps.rules.services.rule_service.validate_action"),
             patch("apps.rules.services.rule_service.Rule.objects.create") as mock_create,
         ):

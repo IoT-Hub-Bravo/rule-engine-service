@@ -1,7 +1,6 @@
 import logging
 from typing import Any
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import transaction
 
 from apps.rules.models.rule import Rule
 from apps.rules.validators.rule_validator import validate_condition, validate_action
@@ -10,7 +9,6 @@ from apps.rules.validators.rule_validator import validate_condition, validate_ac
 logger = logging.getLogger(__name__)
 
 
-@transaction.atomic
 def rule_create(rule_data: dict[str, Any]) -> Rule:
     logger.debug("Creating rule with data: %s", rule_data)
 
