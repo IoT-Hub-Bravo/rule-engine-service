@@ -21,6 +21,7 @@ services:
     networks:
       - iot-hub-nw  
 
+## add consumer
 
 networks:
   iot-hub-nw:

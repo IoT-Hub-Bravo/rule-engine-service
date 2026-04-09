@@ -2,48 +2,62 @@
 
 Rule evaluation service for processing telemetry events and detecting matched business conditions.
 
+---
+
 ## Purpose
 
 The Rule Engine Service owns rule definitions and evaluates incoming telemetry against configured business rules.
+It operates as an independent service, enabling scalable and decoupled rule processing.
+
+---
 
 ## Responsibilities
 
-- manage rule definitions
-- associate rules with devices, metrics, or scopes
-- consume validated telemetry
-- select relevant rules for each telemetry event
-- evaluate rule conditions
-- publish rule match events
+* manage rule definitions
+* associate rules with devices, metrics, or scopes
+* consume validated telemetry events
+* select relevant rules for each telemetry event
+* evaluate rule conditions
+* publish rule match events
 
-## Owned data
+---
 
-- rules
-- rule configuration
-- rule-to-scope bindings
-- rule evaluation metadata
+## Owned Data
+
+* rules
+* rule configurations
+* rule-to-scope bindings
+* rule evaluation metadata
+
+---
 
 ## Integrations
 
 ### Inbound
-- validated telemetry topic
-- management clients for rule CRUD
+
+* validated telemetry topic (Kafka)
+* management clients for rule CRUD (REST API)
 
 ### Outbound
-- rule match events
-- audit-worthy rule lifecycle events
+
+* rule match events (Kafka)
+* audit-worthy rule lifecycle events
+
+---
 
 ## Technology
 
-- Java
-- Kafka
-- Docker
+* Python (**Django**, Django ORM)
+* Kafka (e.g. `aiokafka` або `confluent-kafka`)
+* ASGI (e.g. `uvicorn` / `daphne`) for concurrent processing
+* PostgreSQL
+* Docker
 
-## Starting (SHOULD CHANGE)
-```bash
-docker compose -f compose/standalone.yml --env-file .env up -d --build
-```
 ---
-for dev
-```bash
-docker compose -f compose/standalone.yml -f compose/override.yml --env-file .env up -d --build
-```
+
+## Notes
+
+* The service exposes a REST API for rule management.
+* Telemetry processing is handled asynchronously via Kafka consumers.
+* Healthcheck endpoint is available at `/health/`.
+* Designed for horizontal scaling and independent deployment.
