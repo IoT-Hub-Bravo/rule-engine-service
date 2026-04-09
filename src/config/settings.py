@@ -302,3 +302,22 @@ DEVICE_METRIC_SERVICE_URL = NotImplemented
 # Auth Kit (JWT validation)
 AUTH_KIT_JWKS_URI = config("AUTH_KIT_JWKS_URI", default="http://localhost")
 AUTH_KIT_CACHE_TTL = config("AUTH_KIT_CACHE_TTL", default=3600, cast=int)
+
+# Cache conf 
+RULES_CACHE_TTL = config("RULES_CACHE_TTL", default = 86400, cast=int) # default = 24h
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    },
+    "rules": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
+        "TIMEOUT": RULES_CACHE_TTL,
+        "KEY_PREFIX": "rules",
+        "OPTIONS": {
+            "password": REDIS_PASSWORD,
+    }
+    }
+}

@@ -51,7 +51,7 @@ class RuleCache:
 
     def get_rules(self) -> list[Rule]:
         cache = caches["rules"]
-        cache_key = f"{self.telemetry.device_serial_id}:{self.telemetry.device_metric_id}"
+        cache_key = f"{self.telemetry.device_metric_id}"
 
         rules = cache.get(cache_key)
         if rules is None:
