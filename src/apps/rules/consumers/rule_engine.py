@@ -56,7 +56,7 @@ class RuleEvalHandler:
 
             device_serial_id = validated.get("device_serial_id")
             value = validated.get("value")
-            value_type = validated.get("value_type")
+            value_type = validated.get("type")
             ts = validated.get("ts")  # datetime obj
             device_metric_id = validated.get("device_metric_id")
 

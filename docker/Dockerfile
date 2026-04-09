@@ -46,13 +46,13 @@ RUN addgroup --gid 10001 --system django && \
 
 COPY --chown=django:django ./src/ /app/
 
-COPY --chown=django:django ./docker/django/entrypoint.sh /entrypoint.sh
+COPY --chown=django:django ./docker/entrypoint.sh /entrypoint.sh
 RUN sed -i "s/\r$//g" /entrypoint.sh
 
-COPY --chown=django:django ./docker/django/start-web.sh /start-web.sh
+COPY --chown=django:django ./docker/start-web.sh /start-web.sh
 RUN sed -i "s/\r$//g" /start-web.sh
 
-COPY --chown=django:django ./docker/django/start-web-dev.sh /start-web-dev.sh
+COPY --chown=django:django ./docker/start-web-dev.sh /start-web-dev.sh
 RUN sed -i "s/\r$//g" /start-web-dev.sh
 
 RUN chmod 555 /entrypoint.sh /start-web.sh /start-web-dev.sh

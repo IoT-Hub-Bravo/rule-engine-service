@@ -11,4 +11,5 @@ redis==7.0.1
 django-prometheus==2.4.1
 django-celery-beat==2.8.1
 httpx==0.28.1
-iot-hub-shared[django,celery] @ git+https://github.com/IoT-Hub-Bravo/python-service-libs.git@v0.2.0
+gunicorn==25.3.0
+iot-hub-shared[celery,django,auth_kit] @ git+https://github.com/IoT-Hub-Bravo/python-service-libs.git@auth-kit

@@ -1,3 +1,5 @@
+from typing import Any
+
 from iot_hub_shared.utils_kit import normalize_str, parse_iso8601_utc
 from iot_hub_shared.serializer_kit import JSONSerializer
 
@@ -6,7 +8,8 @@ class RuleEngineSerializer(JSONSerializer):
     """Serializer for validating telemetry data for the rule engine"""
 
     REQUIRED_FIELDS = {
-        'value_jsonb': dict,
+        'type': str,
+        'value': Any,
         'ts': str,
         'device_metric_id': int,
         'device_serial_id': str,
@@ -22,15 +25,30 @@ class RuleEngineSerializer(JSONSerializer):
         except Exception:
             self._errors["ts"] = "Invalid datetime format"
 
-        # value_jsonb
-        value_jsonb = data["value_jsonb"]
-        value = value_jsonb.get("v")
-        value_type = value_jsonb.get("t")
-        if value is None or value_type is None:
-            self._errors["value_jsonb"] = "'value_jsonb' must contain 'v' and 't'"
+        # type + value
+        value_type = data.get("type")
+        value = data.get("value")
+
+        if value_type not in ("numeric", "string", "boolean"):
+            self._errors["type"] = "Invalid type"
         else:
-            validated["value"] = value
-            validated["value_type"] = value_type
+            is_valid = True
+
+            if value_type == "numeric" and not isinstance(value, (int, float)):
+                self._errors["value"] = "Must be int or float"
+                is_valid = False
+
+            elif value_type == "string" and not isinstance(value, str):
+                self._errors["value"] = "Must be string"
+                is_valid = False
+
+            elif value_type == "boolean" and not isinstance(value, bool):
+                self._errors["value"] = "Must be boolean"
+                is_valid = False
+
+            if is_valid:
+                validated["value"] = value
+                validated["value_type"] = value_type
 
         # device_metric_id
         validated["device_metric_id"] = data["device_metric_id"]

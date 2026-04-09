@@ -7,6 +7,7 @@ from django.utils.decorators import method_decorator
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 
+from iot_hub_shared.auth_kit.middleware import login_required
 from iot_hub_shared.audit_kit import publish_audit_event
 
 from apps.rules.serializers.rule_serializers import RuleCreateSerializer, RulePatchSerializer
@@ -25,7 +26,7 @@ logger = logging.getLogger("rules")
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-# @method_decorator(jwt_required, name='dispatch')
+@method_decorator(login_required, name="dispatch")
 class RuleView(View):
     def get(self, request, rule_id=None):
         user = request.user
@@ -241,7 +242,7 @@ class RuleView(View):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-# @method_decorator(jwt_required, name='dispatch')
+@method_decorator(login_required, name="dispatch")
 class RuleEvaluateView(View):
     def post(self, request):
         user = request.user

@@ -3,7 +3,7 @@ import httpx
 from unittest.mock import patch, MagicMock
 from django.conf import settings
 
-from apps.rules.repositories.http import (
+from apps.rules.services.device_service_client import (
     get_user_device_metric_ids,
     check_device_metric_ownership,
 )

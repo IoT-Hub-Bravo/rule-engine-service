@@ -3,7 +3,7 @@ import httpx
 from unittest.mock import patch, MagicMock
 from django.conf import settings
 
-from apps.rules.repositories.http import get_last_telemetries
+from apps.rules.services.telemetry_service_client import get_last_telemetries
 
 
 # ─────────────────────── fixtures ───────────────────────────────

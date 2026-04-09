@@ -51,6 +51,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'iot_hub_shared.auth_kit.middleware.JWTAuthMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
@@ -294,6 +295,10 @@ LOGGING = {
     },
 }
 
-### ще не знаю як назвати
+# TELEMETRY AND DEVICE SERVICES (RENAME maybe)
 TELEMETRY_SERVICE_URL = NotImplemented
 DEVICE_METRIC_SERVICE_URL = NotImplemented
+
+# Auth Kit (JWT validation)
+AUTH_KIT_JWKS_URI = config("AUTH_KIT_JWKS_URI", default="http://localhost")
+AUTH_KIT_CACHE_TTL = config("AUTH_KIT_CACHE_TTL", default=3600, cast=int)
