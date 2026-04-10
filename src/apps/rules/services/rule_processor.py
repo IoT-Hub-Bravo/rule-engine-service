@@ -52,6 +52,7 @@ class RuleCache:
     def get_rules(self) -> list[Rule]:
         cache = caches["rules"]
         cache_key = f"{self.telemetry.device_metric_id}"
+        logger.debug("Rule processor cache - key='%s', type=%s", cache_key, type(self.telemetry.device_metric_id))
 
         rules = cache.get(cache_key)
         if rules is None:
@@ -62,6 +63,9 @@ class RuleCache:
                 )
             )
             cache.set(cache_key, rules, timeout=settings.RULES_CACHE_TTL)
+            logger.debug("RuleCache: SET key='%s', rules=%s", cache_key, [r.id for r in rules])
+        else:
+            logger.debug("RuleCache: HIT key='%s', rules=%s", cache_key, [r.id for r in rules])    
         return rules
 
 
@@ -130,7 +134,7 @@ class RuleProcessor:
                     "Rule triggered - dispatching action",
                     extra={"rule_id": rule.id, "rule_type": rule_type},
                 )
-                # Action.dispatch_action(rule, mapped_telemetry)
+                
                 results.append({"rule_id": rule.id, "triggered": True})
             else:
                 logger.debug(
@@ -141,7 +145,9 @@ class RuleProcessor:
 
         duration = time.perf_counter() - start_time
         rule_processing_seconds.observe(duration)
-
+        
+        logger.debug("Rule processing results: %s", results)
+        
         return {
             "telemetry": {
                 "device_serial_id": mapped_telemetry.device_serial_id,

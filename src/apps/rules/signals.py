@@ -12,9 +12,8 @@ logger = logging.getLogger(__name__)
 def invalidate_rule_cache(sender, instance, **kwargs):
     try:
         cache_rule = caches["rules"]
-
         cache_key = f"{instance.device_metric_id}"
         cache_rule.delete(cache_key)
-
+        logger.debug("Signal: DELETED key='%s' for rule_id=%s", cache_key, instance.id)
     except Exception:
         logger.exception("Cache invalidation failed")
