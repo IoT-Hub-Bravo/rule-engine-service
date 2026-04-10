@@ -11,6 +11,18 @@ x-django-base: &django_base
     - iot-hub-nw
 
 services:
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger-ui
+    restart: always
+    ports:
+      - "3200:8080"
+    environment:
+      SWAGGER_JSON: /docs/api.yaml
+    volumes:
+      - ../docs:/docs
+
+
   rule-engine:
     <<: *django_base
     container_name: rule-engine

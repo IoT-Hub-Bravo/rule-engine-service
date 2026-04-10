@@ -17,3 +17,7 @@ def _patch_django_and_redis_at_import():
         patch(f"{MODULE}.get_redis_client", return_value=mock_redis),
     ):
         yield
+
+@pytest.fixture
+def mock_action():
+    return MagicMock()

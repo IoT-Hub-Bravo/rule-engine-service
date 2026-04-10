@@ -6,6 +6,7 @@ from iot_hub_shared.audit_kit import publish_audit_event
 from apps.rules.services.rule_processor import RuleProcessor
 from config.utils.logging_context import task_id_var, task_name_var
 from apps.rules.audit.rules_audit import rule_evaluated
+from  iot_hub_shared.kafka_kit.producer import KafkaProducer
 
 logger_celery = get_task_logger(__name__)
 
@@ -28,15 +29,17 @@ def evaluate_rule(telemetry: dict):
 
     try:
         res = RuleProcessor.run(telemetry)
-
-        for eval_res in res.get("results", []):
-            if eval_res.get("triggered"):
-                publish_audit_event(
-                    event=rule_evaluated(
-                        rule_id=eval_res.get("rule_id"),
-                        details=res.get("telemetry"),
-                    )
-                )
+        
+        # TEMPORARY
+        # for eval_res in res.get("results", []):
+        #     if eval_res.get("triggered"):
+        #         publish_audit_event(
+        #             producer= KafkaProducer(),
+        #             event=rule_evaluated(
+        #                 rule_id=eval_res.get("rule_id"),
+        #                 details=res.get("telemetry"),
+        #             )
+        #         )
 
     except Exception as e:
         logger_celery.error(

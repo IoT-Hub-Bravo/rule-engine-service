@@ -8,13 +8,12 @@ info:
     pagination, schema versioning, and example payloads for testing.
 
 servers:
-  - url: http://localhost:8000
+  - url: http://localhost:3100
     description: Local development server
 
 tags:
   - name: Rules
     description: Business logic rules and event management
-
 
 
 paths:
@@ -639,9 +638,19 @@ paths:
 
 
 components:
-
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token containing claims:
+        - sub: authenticated user id
+        - scope: granted permissions (e.g., devices:read)
+        - role: user | admin
+        - exp: expiration timestamp
+  
   schemas:
-        
     ErrorResponse:
       type: object
       properties:
@@ -1081,4 +1090,4 @@ components:
           example: true
       example:
         rule_id: 1
-        triggered: true    
+        triggered: true   

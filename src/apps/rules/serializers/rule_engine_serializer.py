@@ -9,7 +9,7 @@ class RuleEngineSerializer(JSONSerializer):
 
     REQUIRED_FIELDS = {
         'type': str,
-        'value': Any,
+        'value': (int, float, bool, str),
         'ts': str,
         'device_metric_id': int,
         'device_serial_id': str,

@@ -8,12 +8,12 @@ from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 
 from iot_hub_shared.auth_kit.middleware import login_required
-from iot_hub_shared.audit_kit import publish_audit_event
+# from iot_hub_shared.audit_kit import publish_audit_event
 
 from apps.rules.serializers.rule_serializers import RuleCreateSerializer, RulePatchSerializer
 from apps.rules.services.rule_service import rule_create, rule_put, rule_patch, rule_delete
 from apps.rules.models.rule import Rule
-from apps.rules.audit.rules_audit import rule_created, rule_updated, rule_deleted, rule_evaluated
+# from apps.rules.audit.rules_audit import rule_created, rule_updated, rule_deleted, rule_evaluated
 from apps.rules.services.rule_processor import RuleProcessor
 from apps.rules.services.device_service_client import (
     get_user_device_metric_ids,
@@ -139,7 +139,7 @@ class RuleView(View):
                 status=400,
             )
 
-        publish_audit_event(event=rule_created(user.pk, rule))
+        # publish_audit_event(event=rule_created(user.id, rule))
         data = {
             "id": rule.id,
             "name": rule.name,
@@ -184,7 +184,7 @@ class RuleView(View):
                 status=400,
             )
 
-        publish_audit_event(event=rule_updated(user.pk, rule_old, rule_new))
+        # publish_audit_event(event=rule_updated(user.id, rule_old, rule_new))
         data = {
             "id": rule_new.id,
             "name": rule_new.name,
@@ -229,7 +229,7 @@ class RuleView(View):
                 status=400,
             )
 
-        publish_audit_event(event=rule_updated(user.pk, rule_old, rule_new))
+        # publish_audit_event(event=rule_updated(user.id, rule_old, rule_new))
 
         return JsonResponse({"status": 200, "rule_id": rule_new.id}, status=200)
 
@@ -247,7 +247,7 @@ class RuleView(View):
         except Rule.DoesNotExist:
             return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
 
-        publish_audit_event(event=rule_deleted(user.pk, rule))
+        # publish_audit_event(event=rule_deleted(user.id, rule))
         rule_delete(rule_id=rule_id)
 
         return JsonResponse({}, status=204)
@@ -288,12 +288,12 @@ class RuleEvaluateView(View):
                     "result": evaluation_result,
                 }
             )
-            if evaluation_result["triggered"]:
-                publish_audit_event(
-                    event=rule_evaluated(
-                        rule_id=evaluation_result["rule_id"],
-                        details=evaluation_result["telemetry"],
-                    )
-                )
+            # if evaluation_result["triggered"]:
+            #     publish_audit_event(
+            #         event=rule_evaluated(
+            #             rule_id=evaluation_result["rule_id"],
+            #             details=evaluation_result["telemetry"],
+            #         )
+            #     )
 
         return JsonResponse({"status": 200, "results": results})

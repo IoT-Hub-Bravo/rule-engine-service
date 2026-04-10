@@ -3,3 +3,6 @@ services:
     command: ["/start-web-dev.sh"]
     volumes:
       - ../src:/app
+  kafka-rule-engine:
+    volumes:
+      - ../src:/app  
