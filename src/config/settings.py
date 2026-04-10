@@ -296,8 +296,8 @@ LOGGING = {
 }
 
 # TELEMETRY AND DEVICE SERVICES (RENAME maybe)
-TELEMETRY_SERVICE_URL = NotImplemented
-DEVICE_METRIC_SERVICE_URL = NotImplemented
+TELEMETRY_SERVICE_URL = config("TELEMETRY_SERVICE_URL",default=NotImplemented)
+DEVICE_REGISTRY_SERVICE_URL = config("DEVICE_REGISTRY_SERVICE_URL",default="http://device-registry:8000/api")    #### CHANGE PORT
 
 # Auth Kit (JWT validation)
 AUTH_KIT_JWKS_URI = config("AUTH_KIT_JWKS_URI", default="http://localhost")

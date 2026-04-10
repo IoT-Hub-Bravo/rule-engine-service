@@ -1,4 +1,5 @@
 import httpx
+from httpx import RequestError
 import logging
 from django.http import JsonResponse
 from django.views import View
@@ -18,6 +19,7 @@ from apps.rules.services.rule_processor import RuleProcessor
 from apps.rules.services.device_service_client import (
     get_user_device_metric_ids,
     check_device_metric_ownership,
+    check_device_metric_exists,
 )
 from apps.rules.utils.json import parse_json_body
 from apps.rules.services.telemetry_service_client import get_last_telemetries
@@ -52,7 +54,10 @@ class RuleView(View):
 
             # permission check
             if not is_admin:
-                allowed_ids = get_user_device_metric_ids(user.id)
+                try:
+                    allowed_ids = get_user_device_metric_ids(user.id)
+                except RequestError:
+                    return JsonResponse({"code": 503, "message": "Device registry unavailable, try again later"}, status=503)
                 if rule.device_metric_id not in allowed_ids:
                     return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
 
@@ -77,7 +82,10 @@ class RuleView(View):
             if is_admin:
                 all_rules = Rule.objects.all()
             else:
-                allowed_ids = get_user_device_metric_ids(user.id)
+                try:
+                    allowed_ids = get_user_device_metric_ids(user.id)
+                except RequestError:
+                    return JsonResponse({"code": 503, "message": "Device registry unavailable, try again later"}, status=503)    
                 all_rules = Rule.objects.filter(device_metric_id__in=allowed_ids)
 
             total = all_rules.count()
@@ -104,12 +112,17 @@ class RuleView(View):
         if not serializer.is_valid():
             return JsonResponse({"code": 400, "message": serializer.errors}, status=400)
 
-        # check if user has that device_metrics
+        # check if user has that device_metrics and if that device_metric exists
         device_metric_id = serializer.validated_data.get("device_metric_id")
-        if not is_admin and not check_device_metric_ownership(device_metric_id, user.id):
-            return JsonResponse(
-                {"code": 403, "message": "DeviceMetric does not belong to the user"}, status=403
-            )
+        try:
+            if is_admin:
+                if not check_device_metric_exists(device_metric_id):
+                    return JsonResponse({"code": 404, "message": "DeviceMetric not found"}, status=404)
+            else:
+                if not check_device_metric_ownership(device_metric_id, user.id):
+                    return JsonResponse({"code": 403, "message": "DeviceMetric does not belong to the user"}, status=403)
+        except httpx.RequestError:
+            return JsonResponse({"code": 503, "message": "Device registry unavailable, try again later"}, status=503)        
 
         try:
             rule = rule_create(rule_data=serializer.validated_data)
@@ -163,7 +176,10 @@ class RuleView(View):
         try:
             rule_old = Rule.objects.get(id=rule_id)
             if not is_admin:
-                allowed_ids = get_user_device_metric_ids(user.id)
+                try:
+                    allowed_ids = get_user_device_metric_ids(user.id)
+                except httpx.RequestError:
+                    return JsonResponse({"code": 503, "message": "Device registry unavailable, try again later"}, status=503)   
                 if rule_old.device_metric_id not in allowed_ids:
                     return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
         except Rule.DoesNotExist:
@@ -172,6 +188,17 @@ class RuleView(View):
         serializer = RuleCreateSerializer(data=data)
         if not serializer.is_valid():
             return JsonResponse({"code": 400, "message": serializer.errors}, status=400)
+
+        new_device_metric_id = serializer.validated_data.get("device_metric_id")
+        try:
+            if is_admin:
+                if not check_device_metric_exists(new_device_metric_id):
+                    return JsonResponse({"code": 404, "message": "DeviceMetric not found"}, status=404)
+            else:
+                if not check_device_metric_ownership(new_device_metric_id, user.id):
+                    return JsonResponse({"code": 403, "message": "DeviceMetric does not belong to the user"}, status=403)
+        except httpx.RequestError:
+                    return JsonResponse({"code": 503, "message": "Device registry unavailable, try again later"}, status=503) 
 
         try:
             rule_new = rule_put(rule_id=rule_id, rule_data=serializer.validated_data)
@@ -218,6 +245,18 @@ class RuleView(View):
         if not serializer.is_valid():
             return JsonResponse({"code": 400, "message": serializer.errors}, status=400)
 
+        new_device_metric_id = serializer.validated_data.get("device_metric_id")
+        try:
+            if new_device_metric_id:
+                if is_admin:
+                    if not check_device_metric_exists(new_device_metric_id):
+                        return JsonResponse({"code": 404, "message": "DeviceMetric not found"}, status=404)
+                else:
+                    if not check_device_metric_ownership(new_device_metric_id, user.id):
+                        return JsonResponse({"code": 403, "message": "DeviceMetric does not belong to the user"}, status=403)
+        except httpx.RequestError:
+                    return JsonResponse({"code": 503, "message": "Device registry unavailable, try again later"}, status=503) 
+    
         try:
             rule_new = rule_patch(rule_id=rule_id, rule_data=serializer.validated_data)
         except ValidationError as e:
@@ -241,7 +280,10 @@ class RuleView(View):
         try:
             rule = Rule.objects.get(id=rule_id)
             if not is_admin:
-                allowed_ids = get_user_device_metric_ids(user.id)
+                try:
+                    allowed_ids = get_user_device_metric_ids(user.id)
+                except httpx.RequestError:
+                    return JsonResponse({"code": 503, "message": "Device registry unavailable, try again later"}, status=503)     
                 if rule.device_metric_id not in allowed_ids:
                     return JsonResponse({"code": 404, "message": "Rule not found"}, status=404)
         except Rule.DoesNotExist:

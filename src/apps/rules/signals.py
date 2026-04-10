@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 @receiver([post_save, post_delete], sender=Rule)
-@receiver([post_save, post_delete], sender=Rule)
 def invalidate_rule_cache(sender, instance, **kwargs):
     try:
         cache_rule = caches["rules"]
